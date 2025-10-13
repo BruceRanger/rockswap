@@ -13,7 +13,7 @@
 # and uploads them to the GitHub Pages hosting service.
 #
 # After completion, the live game is available at:
-#   https://denisecase.github.io/rockswap/
+#   https://BruceRanger.github.io/rockswap/
 # ============================================================
 
 name: Deploy
@@ -94,7 +94,7 @@ jobs:
         env:
           RUN_ID: ${{ github.run_id }}
         run: |
-          URL="https://denisecase.github.io/rockswap/?v=${RUN_ID}"
+          URL="https://BruceRanger.github.io/rockswap/?v=${RUN_ID}"
           echo "Checking: $URL"
           for i in $(seq 1 30); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
@@ -109,7 +109,7 @@ jobs:
         run: |
           mkdir -p reports/mobile
           npx @lhci/cli@0.13.x autorun \
-            --collect.url="https://denisecase.github.io/rockswap/?v=${RUN_ID}" \
+            --collect.url="https://BruceRanger.github.io/rockswap/?v=${RUN_ID}" \
             --collect.numberOfRuns=3 \
             --collect.settings.formFactor=mobile \
             --collect.settings.screenEmulation.mobile=true \
@@ -124,7 +124,7 @@ jobs:
         run: |
           mkdir -p reports/desktop
           npx @lhci/cli@0.13.x autorun \
-            --collect.url="https://denisecase.github.io/rockswap/?v=${RUN_ID}" \
+            --collect.url="https://BruceRanger.github.io/rockswap/?v=${RUN_ID}" \
             --collect.numberOfRuns=3 \
             --collect.settings.preset=desktop \
             --collect.settings.chromeFlags="--no-sandbox --headless=new" \
