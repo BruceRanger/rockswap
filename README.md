@@ -1,4 +1,4 @@
-# RockSwap (Match-3 Game)
+# RockSwap (Match-3 Game) B
 
 [![CI](https://github.com/BruceRanger/rockswap/actions/workflows/ci.yml/badge.svg)](https://github.com/BruceRanger/rockswap/actions/workflows/ci.yml)
 [![Deploy](https://github.com/BruceRanger/rockswap/actions/workflows/deploy.yml/badge.svg)](https://github.com/BruceRanger/rockswap/actions/workflows/deploy.yml)
