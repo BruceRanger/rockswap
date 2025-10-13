@@ -28,7 +28,7 @@ Clone your new rockswap repo down to your machine and open in VS Code using the 
 Open terminal.
 
 ```
-git clone https://github.com/denisecase/rockfit.git
+git clone https://github.com/denisecase/rockswap.git
 cd rockswap
 code .
 ```
