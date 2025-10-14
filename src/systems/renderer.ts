@@ -123,12 +123,16 @@ export function pickCellAt(
   if (rows === 0 || cols === 0) return null;
 
   const rect = canvas.getBoundingClientRect();
-  const { x: cx, y: cy } = getClientXY(ev);
-  const x = cx - rect.left;
-  const y = cy - rect.top;
+const { x: cx, y: cy } = getClientXY(ev);
 
-  const W = canvas.width;
-  const H = canvas.height;
+// Account for CSS scaling: convert screen pixels to logical canvas coordinates
+const scaleX = canvas.width / rect.width;
+const scaleY = canvas.height / rect.height;
+const x = (cx - rect.left) * scaleX;
+const y = (cy - rect.top) * scaleY;
+
+const W = canvas.width;
+const H = canvas.height;
   const cell = Math.floor(Math.min(W / cols, H / rows));
   const ox = Math.floor((W - cols * cell) / 2);
   const oy = Math.floor((H - rows * cell) / 2);
