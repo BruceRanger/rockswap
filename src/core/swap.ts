@@ -7,6 +7,7 @@
 
 import type { Board } from "./grid";
 import { findMatches } from "./match";
+import { isEmpty } from "./cell";
 
 function dims(board: Board) {
   const rows = board.length;
@@ -24,6 +25,21 @@ function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): b
   return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
 }
 
+/**
+ * Try to swap (r1,c1) with (r2,c2).
+ *
+ * - If out-of-bounds or not adjacent → false
+ * - If either cell is EMPTY → false
+ * - Tentatively swaps the two cells, then asks findMatches(board)
+ *   if there is at least one match anywhere.
+ *   - If NO matches → revert swap, return false
+ *   - If YES matches → keep swap, return true
+ *
+ * NOTE: Right now, Hypercubes & Power Gems still obey the
+ * "must-create-a-match" rule. In a future step, you can extend
+ * this to treat hypercube-swaps as always valid and trigger
+ * their color-wipe power here or in the cascade resolver.
+ */
 export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
   // Bounds + adjacency
   if (!inBounds(board, r1, c1) || !inBounds(board, r2, c2)) return false;
@@ -38,7 +54,7 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
 
   // Must be valid numbers and not empties
   if (typeof a !== "number" || typeof b !== "number") return false;
-  if (a < 0 || b < 0) return false;
+  if (isEmpty(a) || isEmpty(b)) return false;
 
   // Tentative swap
   row1[c1] = b as number;
