@@ -5,8 +5,6 @@
 // ============================================================
 
 import { ROCK_COLORS, COUNT_OF_ROCK_TYPES } from "../config";
-
-// NEW: special gem detection
 import { isPowerGem, isHypercube } from "../core/cell";
 
 export type CellRC = { r: number; c: number };
@@ -154,7 +152,7 @@ export function pickCellAt(
   const rect = canvas.getBoundingClientRect();
   const { x: cx, y: cy } = getClientXY(ev);
 
-  // Convert screen → canvas coordinates
+  // Account for CSS scaling: convert screen pixels to logical canvas coordinates
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   const x = (cx - rect.left) * scaleX;
@@ -162,88 +160,6 @@ export function pickCellAt(
 
   const W = canvas.width;
   const H = canvas.height;
-  const cell = Math.floor(Math.min(W / cols, H / rows));
-  const ox = Math.floor((W - cols * cell) / 2);
-  const oy = Math.floor((H - rows * cell) / 2);
-
-  const c = Math.floor((x - ox) / cell);
-  const r = Math.floor((y - oy) / cell);
-
-  if (r >= 0 && r < rows && c >= 0 && c < cols) return { r, c };
-  return null;
-}
-  
-
-  // highlight matches
-  if (opts && opts.highlight && opts.highlight.length > 0) {
-    const alpha = typeof opts.alpha === "number" ? opts.alpha : 1;
-    ctx.save();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,0,1)";
-    // apply alpha via globalAlpha to ensure strokeStyle is a valid string
-    const prevAlpha = ctx.globalAlpha;
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-
-    for (const cellRC of opts.highlight) {
-      if (!cellRC) continue;
-      const r = cellRC.r;
-      const c = cellRC.c;
-      if (r < 0 || c < 0 || r >= rows || c >= cols) continue;
-
-      const x = ox + c * cell;
-      const y = oy + r * cell;
-      ctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
-    }
-
-    ctx.globalAlpha = prevAlpha;
-    ctx.restore();
-  }
-
-  // selected cell outline (if any)
-  if (opts && opts.selected) {
-    const r = opts.selected.r;
-    const c = opts.selected.c;
-    if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && c >= 0 && r < rows && c < cols) {
-      const x = ox + c * cell;
-      const y = oy + r * cell;
-      ctx.save();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.shadowColor = "rgba(255,255,255,0.8)";
-      ctx.shadowBlur = 8;
-      ctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
-      ctx.restore();
-    }
-  }
-
-
-// get client coordinates from MouseEvent | PointerEvent | TouchEvent
-function getClientXY(ev: MouseEvent | PointerEvent | TouchEvent) {
-  if ("clientX" in ev && "clientY" in ev) return { x: ev.clientX, y: ev.clientY };
-  const te = ev as TouchEvent;
-  const t = te.changedTouches && te.changedTouches[0];
-  return t ? { x: t.clientX, y: t.clientY } : { x: 0, y: 0 };
-}
-
-export function pickCellAt(
-  board: number[][],
-  canvas: HTMLCanvasElement,
-  ev: MouseEvent | PointerEvent | TouchEvent
-) {
-  const { rows, cols } = dims(board);
-  if (rows === 0 || cols === 0) return null;
-
-  const rect = canvas.getBoundingClientRect();
-const { x: cx, y: cy } = getClientXY(ev);
-
-// Account for CSS scaling: convert screen pixels to logical canvas coordinates
-const scaleX = canvas.width / rect.width;
-const scaleY = canvas.height / rect.height;
-const x = (cx - rect.left) * scaleX;
-const y = (cy - rect.top) * scaleY;
-
-const W = canvas.width;
-const H = canvas.height;
   const cell = Math.floor(Math.min(W / cols, H / rows));
   const ox = Math.floor((W - cols * cell) / 2);
   const oy = Math.floor((H - rows * cell) / 2);
