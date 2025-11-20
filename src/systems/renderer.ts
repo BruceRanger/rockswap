@@ -172,7 +172,7 @@ export function pickCellAt(
   if (r >= 0 && r < rows && c >= 0 && c < cols) return { r, c };
   return null;
 }
-  }
+  
 
   // highlight matches
   if (opts && opts.highlight && opts.highlight.length > 0) {
