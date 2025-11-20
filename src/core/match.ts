@@ -1,135 +1,127 @@
 // ============================================================
 // File: src/core/match.ts
-// Purpose: Find match-3/4/5 runs AND identify where to place
-//          Power Gems (run4) and Hypercubes (run5).
+// Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
-// Returns FoundMatch[] containing:
-//    - cells[]: all cells in the run
-//    - length: 3,4, or >=5
-//    - kind: "run3" | "run4" | "run5"
-//    - specialPos?: where to place special gem (only for run4/run5)
+// - A match is any run of length >= 3 of the same non-negative value.
+// - Strict-mode safe (no possibly-undefined warnings).
+// - Exports both a mask-based finder and a cell-list finder.
 // ============================================================
 
 import type { Board } from "./grid";
 
 export type CellRC = { r: number; c: number };
 
-export interface FoundMatch {
-  cells: CellRC[];            // all cells in this one run
-  length: number;             // 3,4, or >=5
-  kind: "run3" | "run4" | "run5";
-  specialPos?: CellRC;        // position where power/hyper gem is created
-}
-
-function inBounds(board: Board, r: number, c: number): boolean {
-  const rows = board.length;
-  const cols = rows > 0 ? board[0]!.length : 0;
-  return r >= 0 && r < rows && c >= 0 && c < cols;
-}
-
-// ==============================================================
-// Helper: record a match of length >= 3
-// ==============================================================
-
-function recordRun(
-  out: FoundMatch[],
-  cells: CellRC[],
-  length: number
-) {
-  let kind: "run3" | "run4" | "run5" =
-    length >= 5 ? "run5" : length === 4 ? "run4" : "run3";
-
-  let specialPos: CellRC | undefined;
-
-  // Bejeweled-simple rule:
-  //   run4  → power gem in center of the 4-run
-  //   run5+ → hypercube in center of the 5-run
-  if (kind === "run4" || kind === "run5") {
-    // pick the middle cell
-    const mid = Math.floor(cells.length / 2);
-    specialPos = {
-      r: cells[mid].r,
-      c: cells[mid].c
-    };
-  }
-
-  out.push({
-    cells,
-    length,
-    kind,
-    specialPos
-  });
-}
-
-// ==============================================================
-// MAIN: findMatches(board)
-// ==============================================================
-
-export function findMatches(board: Board): FoundMatch[] {
-  const rows = board.length;
-  const cols = rows > 0 ? board[0]!.length : 0;
-
-  const out: FoundMatch[] = [];
-
-  if (rows === 0 || cols === 0) return out;
-
-  // ------------------------------------------------------------
-  // Horizontal runs
-  // ------------------------------------------------------------
+/** Allocate a false-filled mask. */
+function makeMask(rows: number, cols: number): boolean[][] {
+  const out: boolean[][] = new Array(rows);
   for (let r = 0; r < rows; r++) {
+    out[r] = new Array<boolean>(cols).fill(false);
+  }
+  return out;
+}
+
+/** True if any cell in the mask is true. */
+export function hasAny(mask: boolean[][]): boolean {
+  for (let r = 0; r < mask.length; r++) {
+    const row = mask[r]!;
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === true) return true;
+    }
+  }
+  return false;
+}
+
+/** Mark cells [start..end] in a row on the given mask. */
+function markRow(mask: boolean[][], r: number, start: number, end: number): void {
+  const row = mask[r]!;
+  for (let c = start; c <= end; c++) row[c] = true;
+}
+
+/** Mark cells [start..end] in a column on the given mask. */
+function markCol(mask: boolean[][], c: number, start: number, end: number): void {
+  for (let r = start; r <= end; r++) {
+    mask[r]![c] = true;
+  }
+}
+
+/**
+ * Internal: build a boolean mask of matches.
+ * Returns a mask: true where the cell should be cleared.
+ */
+export function findMatchesMask(board: Board): boolean[][] {
+  const rows = board.length;
+  if (rows === 0) return [];
+  const cols = board[0]!.length;
+  if (cols === 0) return makeMask(0, 0);
+
+  const mask = makeMask(rows, cols);
+
+  // Horizontal runs
+  for (let r = 0; r < rows; r++) {
+    const row = board[r]!;
     let c = 0;
     while (c < cols) {
-      const v = board[r]![c];
-      if (v < 0) {
+      const val = row[c]!;
+      if (val < 0) {
         c++;
         continue;
       }
-
       let start = c;
       c++;
-      while (c < cols && board[r]![c] === v) {
-        c++;
-      }
-
+      while (c < cols && row[c]! === val) c++;
       const runLen = c - start;
-      if (runLen >= 3) {
-        const cells: CellRC[] = [];
-        for (let x = start; x < c; x++) {
-          cells.push({ r, c: x });
-        }
-        recordRun(out, cells, runLen);
-      }
+      if (runLen >= 3) markRow(mask, r, start, c - 1);
     }
   }
 
-  // ------------------------------------------------------------
   // Vertical runs
-  // ------------------------------------------------------------
   for (let c = 0; c < cols; c++) {
     let r = 0;
     while (r < rows) {
-      const v = board[r]![c];
-      if (v < 0) {
+      const val = board[r]![c]!;
+      if (val < 0) {
         r++;
         continue;
       }
-
       let start = r;
       r++;
-      while (r < rows && board[r]![c] === v) {
-        r++;
-      }
-
+      while (r < rows && board[r]![c]! === val) r++;
       const runLen = r - start;
-      if (runLen >= 3) {
-        const cells: CellRC[] = [];
-        for (let y = start; y < r; y++) {
-          cells.push({ r: y, c });
-        }
-        recordRun(out, cells, runLen);
-      }
+      if (runLen >= 3) markCol(mask, c, start, r - 1);
     }
   }
 
+  return mask;
+}
+
+/**
+ * Public: return matched cells as a list of { r, c }.
+ * This is what your resolve loop expects.
+ */
+export function findMatches(board: Board): CellRC[] {
+  const mask = findMatchesMask(board);
+  const out: CellRC[] = [];
+  for (let r = 0; r < mask.length; r++) {
+    const row = mask[r]!;
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === true) out.push({ r, c });
+    }
+  }
+  return out;
+}
+
+/** Combine masks if needed. */
+export function combineMatches(a: boolean[][], b: boolean[][]): boolean[][] {
+  const rows = Math.max(a.length, b.length);
+  const cols = rows > 0 ? Math.max(a[0]!.length, b[0]!.length) : 0;
+  const out = makeMask(rows, cols);
+  for (let r = 0; r < rows; r++) {
+    const ar = a[r] || [];
+    const br = b[r] || [];
+    const or = out[r]!;
+    for (let c = 0; c < cols; c++) {
+      or[c] = ar[c] === true || br[c] === true;
+    }
+  }
   return out;
 }
