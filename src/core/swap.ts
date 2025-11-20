@@ -1,13 +1,21 @@
 // ============================================================
 // File: src/core/swap.ts
-// Purpose: Attempt a swap. Commit only if it creates a match.
-// Returns: true if swap committed (created at least one match).
+// Purpose: Attempt a swap. Commit only if it creates a match,
+//          EXCEPT for Hypercubes, which trigger color wipes.
+// Returns: true if swap committed (created at least one match
+//          or fired a Hypercube power).
 // Strict-mode safe.
 // ============================================================
 
 import type { Board } from "./grid";
 import { findMatches } from "./match";
-import { isEmpty } from "./cell";
+import {
+  isEmpty,
+  isHypercube,
+  baseColorOf,
+} from "./cell";
+import { collapse } from "./collapse";
+import { refill } from "./refill";
 
 function dims(board: Board) {
   const rows = board.length;
@@ -30,15 +38,22 @@ function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): b
  *
  * - If out-of-bounds or not adjacent → false
  * - If either cell is EMPTY → false
- * - Tentatively swaps the two cells, then asks findMatches(board)
- *   if there is at least one match anywhere.
- *   - If NO matches → revert swap, return false
- *   - If YES matches → keep swap, return true
  *
- * NOTE: Right now, Hypercubes & Power Gems still obey the
- * "must-create-a-match" rule. In a future step, you can extend
- * this to treat hypercube-swaps as always valid and trigger
- * their color-wipe power here or in the cascade resolver.
+ * Hypercube behavior:
+ * - Hypercube + normal gem:
+ *     - Swap is always allowed
+ *     - All gems of the *other* gem's color are cleared
+ *     - Both the hypercube and its partner are also cleared
+ *     - collapse(board) + refill(board) are called
+ * - Hypercube + Hypercube:
+ *     - Swap is always allowed
+ *     - Entire board is cleared (all non-empty cells)
+ *     - collapse(board) + refill(board) are called
+ *
+ * Normal behavior (no hypercube involved):
+ * - Tentatively swap the two cells, then:
+ *   - If NO matches anywhere → revert swap, return false
+ *   - If YES matches → keep swap, return true
  */
 export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
   // Bounds + adjacency
@@ -55,6 +70,75 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
   // Must be valid numbers and not empties
   if (typeof a !== "number" || typeof b !== "number") return false;
   if (isEmpty(a) || isEmpty(b)) return false;
+
+  const aHyper = isHypercube(a);
+  const bHyper = isHypercube(b);
+
+  // =========================================================
+  // Hypercube behavior
+  // =========================================================
+  if (aHyper || bHyper) {
+    // Commit the swap visually/structurally first
+    row1[c1] = b as number;
+    row2[c2] = a as number;
+
+    const { rows, cols } = dims(board);
+
+    if (aHyper && bHyper) {
+      // Hypercube + Hypercube:
+      // Clear the entire board (all non-empty cells)
+      for (let r = 0; r < rows; r++) {
+        const row = board[r];
+        if (!row) continue;
+        for (let c = 0; c < cols; c++) {
+          if (!isEmpty(row[c])) {
+            row[c] = -1;
+          }
+        }
+      }
+    } else {
+      // Exactly one hypercube
+      // Determine the target color from the *non-hyper* partner
+      let targetColor = -1;
+      if (aHyper && !bHyper) {
+        targetColor = baseColorOf(b);
+      } else if (bHyper && !aHyper) {
+        targetColor = baseColorOf(a);
+      }
+
+      // Clear:
+      //  - all gems of targetColor
+      //  - the hypercube itself
+      for (let r = 0; r < rows; r++) {
+        const row = board[r];
+        if (!row) continue;
+        for (let c = 0; c < cols; c++) {
+          const v = row[c];
+          if (isEmpty(v)) continue;
+
+          if (isHypercube(v)) {
+            // Hypercube removes itself
+            row[c] = -1;
+          } else {
+            if (targetColor >= 0 && baseColorOf(v) === targetColor) {
+              row[c] = -1;
+            }
+          }
+        }
+      }
+    }
+
+    // After the wipe, let gravity + refill do their job.
+    collapse(board);
+    refill(board);
+
+    // From the user's perspective, this is always a valid move.
+    return true;
+  }
+
+  // =========================================================
+  // Normal (non-hypercube) behavior: must create a match
+  // =========================================================
 
   // Tentative swap
   row1[c1] = b as number;
