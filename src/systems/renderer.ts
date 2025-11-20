@@ -215,7 +215,7 @@ export function pickCellAt(
       ctx.restore();
     }
   }
-}
+
 
 // get client coordinates from MouseEvent | PointerEvent | TouchEvent
 function getClientXY(ev: MouseEvent | PointerEvent | TouchEvent) {
