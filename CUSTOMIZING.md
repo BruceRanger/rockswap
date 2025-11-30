@@ -29,14 +29,14 @@ Create your own version of RockSwap with custom colors or settings - just follow
 
 1. In your forked repo, navigate to `README.md`
 2. Click the **pencil icon** (Edit this file)
-3. Change all occurances of `denisecase` to your GitHub account name
+3. Change all occurrences of `BruceRanger` to your GitHub account name
 4. Scroll down and click **Commit changes**
 
 ### Step 1D: Change deploy.yml to your account:
 
 1. In your forked repo, navigate to `.github\workflows\deploy.yml`
 2. Click the **pencil icon** (Edit this file)
-3. Change all occurances of `denisecase` to your GitHub account name
+3. Change all occurrences of `BruceRanger` to your GitHub account name
 4. Scroll down and click **Commit changes**
 
 ---

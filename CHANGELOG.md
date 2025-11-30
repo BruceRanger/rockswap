@@ -13,6 +13,14 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.2.0] - 2025-11-30
+
+### Added
+
+- Scoring enhancements
+
+---
+
 ## [0.1.0] - 2025-10-13
 
 ### Added
@@ -30,5 +38,6 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 - Versions are driven by git tags via `setuptools_scm`. Tag `vX.Y.Z` to release.
 - Docs are deployed per version tag and aliased to **latest**.
 
-[Unreleased]: https://github.com/denisecase/rockswap/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/denisecase/rockswap/releases/tag/v0.1.0
+[Unreleased]: https://github.com/BruceRanger/rockswap/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/BruceRanger/rockswap/releases/tag/v0.2.0
+[0.1.0]: https://github.com/BruceRanger/rockswap/releases/tag/v0.1.0

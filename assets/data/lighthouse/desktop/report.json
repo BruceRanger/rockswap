@@ -1,9 +1,9 @@
 {
   "lighthouseVersion": "12.8.2",
-  "requestedUrl": "https://denisecase.github.io/rockswap/",
-  "mainDocumentUrl": "https://denisecase.github.io/rockswap/",
-  "finalDisplayedUrl": "https://denisecase.github.io/rockswap/",
-  "finalUrl": "https://denisecase.github.io/rockswap/",
+  "requestedUrl": "https://BruceRanger.github.io/rockswap/",
+  "mainDocumentUrl": "https://BruceRanger.github.io/rockswap/",
+  "finalDisplayedUrl": "https://BruceRanger.github.io/rockswap/",
+  "finalUrl": "https://BruceRanger.github.io/rockswap/",
   "fetchTime": "2025-10-13T02:13:43.847Z",
   "gatherMode": "navigation",
   "runWarnings": [],
@@ -277,7 +277,7 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/",
+            "url": "https://BruceRanger.github.io/rockswap/",
             "responseTime": 56.503
           }
         ],
@@ -343,7 +343,7 @@
         "chains": {
           "81E7619BB15C4964D69D5CEB2A85512B": {
             "request": {
-              "url": "https://denisecase.github.io/rockswap/",
+              "url": "https://BruceRanger.github.io/rockswap/",
               "startTime": 569665.352565,
               "endTime": 569665.411138,
               "responseReceivedTime": 569665.410311,
@@ -352,7 +352,7 @@
             "children": {
               "26856.2": {
                 "request": {
-                  "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+                  "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
                   "startTime": 569665.424801,
                   "endTime": 569665.522877,
                   "responseReceivedTime": 569665.521041,
@@ -361,7 +361,7 @@
               },
               "26856.3": {
                 "request": {
-                  "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+                  "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
                   "startTime": 569665.425527,
                   "endTime": 569665.51039,
                   "responseReceivedTime": 569665.509994,
@@ -765,7 +765,7 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/",
+            "url": "https://BruceRanger.github.io/rockswap/",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 0,
@@ -782,7 +782,7 @@
             "entity": "GitHub"
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 67.3180000782013,
@@ -799,7 +799,7 @@
             "entity": "GitHub"
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 67.49699997901917,
@@ -816,7 +816,7 @@
             "entity": "GitHub"
           },
           {
-            "url": "https://denisecase.github.io/rockswap/manifest.webmanifest",
+            "url": "https://BruceRanger.github.io/rockswap/manifest.webmanifest",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 189.86100006103516,
@@ -833,7 +833,7 @@
             "entity": "GitHub"
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/favicon-j-QThmeh.png",
+            "url": "https://BruceRanger.github.io/rockswap/assets/favicon-j-QThmeh.png",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 191.04900002479553,
@@ -850,7 +850,7 @@
             "entity": "GitHub"
           },
           {
-            "url": "https://denisecase.github.io/rockswap/icons/icon-192.png",
+            "url": "https://BruceRanger.github.io/rockswap/icons/icon-192.png",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 364.92200005054474,
@@ -873,13 +873,13 @@
           "initiators": [
             {
               "type": "parser",
-              "url": "https://denisecase.github.io/rockswap/",
+              "url": "https://BruceRanger.github.io/rockswap/",
               "lineNumber": 11,
               "columnNumber": 77
             },
             {
               "type": "parser",
-              "url": "https://denisecase.github.io/rockswap/",
+              "url": "https://BruceRanger.github.io/rockswap/",
               "lineNumber": 12,
               "columnNumber": 80
             }
@@ -913,7 +913,7 @@
         ],
         "items": [
           {
-            "origin": "https://denisecase.github.io",
+            "origin": "https://BruceRanger.github.io",
             "rtt": 0.0683
           }
         ],
@@ -946,7 +946,7 @@
         ],
         "items": [
           {
-            "origin": "https://denisecase.github.io",
+            "origin": "https://BruceRanger.github.io",
             "serverResponseTime": 88.84870000000001
           }
         ],
@@ -1637,7 +1637,7 @@
         "type": "treemap-data",
         "nodes": [
           {
-            "name": "https://denisecase.github.io/rockswap/",
+            "name": "https://BruceRanger.github.io/rockswap/",
             "resourceBytes": 224,
             "encodedBytes": 0,
             "children": [
@@ -1649,7 +1649,7 @@
             ]
           },
           {
-            "name": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+            "name": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
             "resourceBytes": 8792,
             "encodedBytes": 2265,
             "unusedBytes": 4277
@@ -2336,7 +2336,7 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
             "debugData": {
               "type": "debugdata",
               "max-age": 600
@@ -2347,7 +2347,7 @@
             "wastedBytes": 3641.9166666666665
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
             "debugData": {
               "type": "debugdata",
               "max-age": 600
@@ -2391,23 +2391,23 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/assets/favicon-j-QThmeh.png",
+            "url": "https://BruceRanger.github.io/rockswap/assets/favicon-j-QThmeh.png",
             "totalBytes": 65688
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
             "totalBytes": 3973
           },
           {
-            "url": "https://denisecase.github.io/rockswap/",
+            "url": "https://BruceRanger.github.io/rockswap/",
             "totalBytes": 935
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
             "totalBytes": 684
           },
           {
-            "url": "https://denisecase.github.io/rockswap/manifest.webmanifest",
+            "url": "https://BruceRanger.github.io/rockswap/manifest.webmanifest",
             "totalBytes": 575
           }
         ],
@@ -3235,13 +3235,13 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
             "cacheLifetimeMs": 600000,
             "totalBytes": 3973,
             "wastedBytes": 3641.9166666666665
           },
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
             "cacheLifetimeMs": 600000,
             "totalBytes": 684,
             "wastedBytes": 627
@@ -3776,20 +3776,20 @@
               "type": "network-tree",
               "chains": {
                 "81E7619BB15C4964D69D5CEB2A85512B": {
-                  "url": "https://denisecase.github.io/rockswap/",
+                  "url": "https://BruceRanger.github.io/rockswap/",
                   "navStartToEndTime": 72,
                   "transferSize": 935,
                   "isLongest": true,
                   "children": {
                     "26856.2": {
-                      "url": "https://denisecase.github.io/rockswap/assets/index-VTmb7HOX.js",
+                      "url": "https://BruceRanger.github.io/rockswap/assets/index-VTmb7HOX.js",
                       "navStartToEndTime": 185,
                       "transferSize": 3973,
                       "isLongest": true,
                       "children": {}
                     },
                     "26856.3": {
-                      "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+                      "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
                       "navStartToEndTime": 160,
                       "transferSize": 684,
                       "children": {}
@@ -3856,7 +3856,7 @@
         ],
         "items": [
           {
-            "url": "https://denisecase.github.io/rockswap/assets/index-D_vJRR0C.css",
+            "url": "https://BruceRanger.github.io/rockswap/assets/index-D_vJRR0C.css",
             "totalBytes": 684
           }
         ]
@@ -5000,7 +5000,7 @@
   "entities": [
     {
       "name": "GitHub",
-      "origins": ["https://denisecase.github.io"],
+      "origins": ["https://BruceRanger.github.io"],
       "isFirstParty": true,
       "category": "utility"
     }

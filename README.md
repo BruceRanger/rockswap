@@ -1,4 +1,4 @@
-# RockSwap (Match-3 Game) B
+# RockSwap (Match-3 Game) BruceRanger
 
 [![CI](https://github.com/BruceRanger/rockswap/actions/workflows/ci.yml/badge.svg)](https://github.com/BruceRanger/rockswap/actions/workflows/ci.yml)
 [![Deploy](https://github.com/BruceRanger/rockswap/actions/workflows/deploy.yml/badge.svg)](https://github.com/BruceRanger/rockswap/actions/workflows/deploy.yml)
@@ -17,20 +17,20 @@
 [![Lighthouse Performance Badge](./assets/img/scores/lighthouse_performance.svg)](https://github.com/BruceRanger/rockswap)
 [![Lighthouse SEO Badge](./assets/img/scores/lighthouse_seo.svg)](https://github.com/BruceRanger/rockswap)
 
-A learner-friendly match-3 puzzle game built with TypeScript and HTML5 Canvas.
+A match-3 puzzle game built with TypeScript and HTML5 Canvas.
 Installable as a Progressive Web App (PWA).
 
-Initial Features:
+Features:
 
 - 8x8 board with 6 rock kinds
-- Swap adjacent cells if it forms a match
+- Swap adjacent cells by tapping them if the swap will form a match of 3 or more in a row
 - Find matches, clear, collapse, refill
 - Basic scoring and moves
 
 ## Controls
 
 - Click a cell and then click an adjacent cell to try a swap.
-- Valid swaps that create matches will clear and cascade.
+- Valid swaps that create matches (3 in a row, same color) will clear and cascade.
 
 ## How the Game Logic is Organized
 

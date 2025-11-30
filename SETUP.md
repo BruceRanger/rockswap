@@ -23,12 +23,12 @@ If you want to change gameplay, scoring logic, or transitions, you'll probably w
 ## 2. Get a Copy on Your Machine
 
 Log in to GitHub.
-Go to github.com/denisecase/rockswap. Click "Fork" to copy the repo into your GitHub account.
+Go to [github.com/BruceRanger/rockswap](https://github.com/BruceRanger/rockswap). Click "Fork" to copy the repo into your GitHub account.
 Clone your new rockswap repo down to your machine and open in VS Code using the following commands.
 Open terminal.
 
 ```
-git clone https://github.com/denisecase/rockswap.git
+git clone https://github.com/BruceRanger/rockswap.git
 cd rockswap
 code .
 ```
@@ -43,15 +43,17 @@ In VS Code, open a new terminal (CMD+SHIFT+` or use the menu: "Terminal", "New T
 
 ```bash
 npm install
-
 npm audit fix --force
+npm run build
 
-npm run format
+npm run format:check
 
 npm run dev
 
 # open http://localhost:5174
 ```
+
+Use CTRL+c or CMD+c to quit. 
 
 ---
 

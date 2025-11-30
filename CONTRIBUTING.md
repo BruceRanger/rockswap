@@ -12,9 +12,9 @@ To **run or test the game locally**, see setup instructions below.
 
 ## Quick Start: Make Edits Online
 
-1. Go to **[github.com/denisecase/rockswap](https://github.com/denisecase/rockswap)**.
+1. Go to **[github.com/BruceRanger/rockswap](https://github.com/BruceRanger/rockswap)**.
 2. Click **Fork** (this makes your own copy).
-3. Click **.`** (period key) or open **`https://github.dev/denisecase/rockswap`** and the project will open in VS Code for the web.
+3. Click **.`** (period key) or open **`https://github.dev/BruceRanger/rockswap`** and the project will open in VS Code for the web.
 4. Make small text, color, or label changes in the browser.
 5. Commit your changes. All **code checks run automatically**.
 6. When ready, open a **Pull Request** and we'll merge your edits.
