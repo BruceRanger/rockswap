@@ -1,23 +1,25 @@
-// ================================================================
+// ============================================================
 // File: src/core/cell.ts
 // Purpose: Bit-flags and helpers for special gem types
-//          (power gem, hypercube, etc.)
-// ================================================================
-
+//          (power gem, hypercube, etc.).
+// ============================================================
+//
 // Base gem values are 0..(KINDS-1).
 // We encode special gems by adding bit flags above the color index.
 //
 // Example:
-//   value = color | FLAG_POWER
-//   value = color | FLAG_HYPERCUBE
+//    value = color | FLAG_POWER
+//    value = color | FLAG_HYPERCUBE
 //
 // The renderer can check these flags to draw differently.
 // The board logic can check these flags to apply special effects.
+//
+// ============================================================
 
-// --- Flag bits --------------------------------------------------
+// --- Flag bits ------------------------------------------------
 
-export const FLAG_POWER     = 1 << 8; // 256
-export const FLAG_HYPERCUBE = 1 << 9; // 512
+export const FLAG_POWER = 1 << 8;      // 256
+export const FLAG_HYPERCUBE = 1 << 9;  // 512
 
 // Mask for the base gem color (low byte only).
 export const COLOR_MASK = 0xff;
