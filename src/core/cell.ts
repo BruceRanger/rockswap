@@ -28,6 +28,11 @@ export function baseColor(value: number): number {
   return value & COLOR_MASK;
 }
 
+// An "empty" cell uses a negative value (e.g., -1).
+export function isEmpty(value: number): boolean {
+  return value < 0;
+}
+
 // Convenience helpers for game logic / renderer.
 export function isPowerGem(value: number): boolean {
   return (value & FLAG_POWER) !== 0;
