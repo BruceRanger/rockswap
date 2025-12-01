@@ -1,27 +1,40 @@
 // ============================================================
 // File: src/core/scoring.ts
 // Purpose:
+//   - Classic-style Bejeweled 2 scoring & special gems.
 //   - Turn a list of matched cells into a clear-mask.
-//   - Expand that mask for power gems and hypercubes.
-//   - Clear those cells on the board.
-//   - Return base points for this pass (before chain multiplier).
+//   - Create Power Gems (4 / L / T) and Hypercubes (5-line).
+//   - Ensure newly created specials do NOT explode immediately.
+//   - Expand clears for existing Power Gems / Hypercubes.
+//   - Clear those cells on the board and return base points.
 //
 // Notes:
-//   - Power gem: clears its entire row and column.
-//   - Hypercube: clears ALL gems of its base color on the board.
-//   - Chain multiplier is applied in main.ts (resolveBoard).
+//   - Base score: 10 points per cleared gem.
+//   - Cascade multiplier is handled in main.ts (chain).
+//   - Power Gem: when matched, clears 3x3 area.
+//   - Hypercube: when matched, clears all gems of its base color.
 // ============================================================
 
 import type { Board } from "./grid";
 import type { CellRC } from "./match";
-import { isPowerGem, isHypercube, baseColor as getBaseColor } from "./cell";
+import {
+  baseColor as getBaseColor,
+  isPowerGem,
+  isHypercube,
+  FLAG_POWER,
+  FLAG_HYPERCUBE
+} from "./cell";
+
+// ------------------------------------------------------------
+// User-visible scoring config (for HUD summary)
+// ------------------------------------------------------------
 
 export type RunBonusTable = { [runLen: number]: number };
 
 export interface UserScoringConfig {
   /** points per cleared gem */
   perCell: number;
-  /** bonus tables (not heavily used in this simple version) */
+  /** optional bonus tables for HUD display (not heavily used) */
   bonuses?: {
     exact?: RunBonusTable;
     atLeast?: RunBonusTable;
@@ -29,25 +42,23 @@ export interface UserScoringConfig {
 }
 
 /**
- * Basic user-visible scoring config. main.ts uses this only for
- * displaying a summary in the HUD hover text.
+ * Classic Bejeweled 2: 10 points per gem.
+ * We keep bonuses for possible future use, but the main rule is 10 per gem.
  */
 export const USER_SCORING: UserScoringConfig = {
   perCell: 10,
   bonuses: {
     exact: {
-      // e.g. a 4-match might give a small bonus if we ever want it.
-      4: 20,
-      5: 50
+      4: 0,  // no extra flat bonus; reward comes from Power Gem explosion later
+      5: 0
     },
-    atLeast: {
-      // Could say: any 6+ run yields an extra 100, etc.
-      6: 100
-    }
+    atLeast: {}
   }
 };
 
-// ---- Internal helpers ---------------------------------------------------
+// ------------------------------------------------------------
+// Internal helpers
+// ------------------------------------------------------------
 
 function dims(board: Board) {
   const rows = board.length;
@@ -55,6 +66,7 @@ function dims(board: Board) {
   return { rows, cols };
 }
 
+/** Allocate a false-filled boolean mask. */
 function makeMask(rows: number, cols: number): boolean[][] {
   const out: boolean[][] = new Array(rows);
   for (let r = 0; r < rows; r++) {
@@ -63,15 +75,13 @@ function makeMask(rows: number, cols: number): boolean[][] {
   return out;
 }
 
+/** Safe in-bounds check. */
 function inBounds(board: Board, r: number, c: number): boolean {
   const { rows, cols } = dims(board);
   return r >= 0 && r < rows && c >= 0 && c < cols;
 }
 
-/**
- * Build an initial mask from the list of matched cells.
- * (Just mark every matched {r,c} as true if it's in-bounds.)
- */
+/** Build a mask from the raw matches list. */
 function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
   const { rows, cols } = dims(board);
   const mask = makeMask(rows, cols);
@@ -86,16 +96,240 @@ function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
   return mask;
 }
 
+// ------------------------------------------------------------
+// Run detection (for 4/L/T/5 shapes)
+// ------------------------------------------------------------
+
+type Run = {
+  kind: "H" | "V";
+  color: number;
+  row: number;      // for H: row index
+  col: number;      // for V: col index
+  start: number;    // start index along the run direction
+  len: number;
+};
+
 /**
- * Expand the mask for power gems:
- *   - For any cell that is both in the mask and a power gem,
- *     mark its entire row and column as true.
+ * Scan the board and return all horizontal & vertical runs
+ * of length >= 3 by base color.
+ */
+function findAllRuns(board: Board): Run[] {
+  const { rows, cols } = dims(board);
+  const runs: Run[] = [];
+
+  // Horizontal runs
+  for (let r = 0; r < rows; r++) {
+    const row = board[r];
+    if (!row) continue;
+
+    let c = 0;
+    while (c < cols) {
+      const v = row[c];
+      if (typeof v !== "number" || v < 0) {
+        c++;
+        continue;
+      }
+      const color = getBaseColor(v);
+      let start = c;
+      c++;
+      while (c < cols) {
+        const v2 = row[c];
+        if (typeof v2 !== "number" || v2 < 0) break;
+        if (getBaseColor(v2) !== color) break;
+        c++;
+      }
+      const len = c - start;
+      if (len >= 3) {
+        runs.push({
+          kind: "H",
+          color,
+          row: r,
+          col: -1,
+          start,
+          len
+        });
+      }
+    }
+  }
+
+  // Vertical runs
+  for (let c = 0; c < cols; c++) {
+    let r = 0;
+    while (r < rows) {
+      const v = board[r]?.[c];
+      if (typeof v !== "number" || v < 0) {
+        r++;
+        continue;
+      }
+      const color = getBaseColor(v);
+      let start = r;
+      r++;
+      while (r < rows) {
+        const v2 = board[r]?.[c];
+        if (typeof v2 !== "number" || v2 < 0) break;
+        if (getBaseColor(v2) !== color) break;
+        r++;
+      }
+      const len = r - start;
+      if (len >= 3) {
+        runs.push({
+          kind: "V",
+          color,
+          row: -1,
+          col: c,
+          start,
+          len
+        });
+      }
+    }
+  }
+
+  return runs;
+}
+
+// ------------------------------------------------------------
+// Special-gem creation (Power Gem / Hypercube)
+// ------------------------------------------------------------
+
+type SpecialType = "power" | "hypercube";
+type SpecialGem = { r: number; c: number; type: SpecialType };
+
+/**
+ * Pick at most one special gem to create, based on the
+ * current runs and match mask, following Bejeweled 2 priorities:
+ *
+ * 1) 5-in-a-row (straight) -> Hypercube
+ * 2) L / T shapes (overlap of H & V runs) -> Power Gem
+ * 3) 4-in-a-row (straight) -> Power Gem
+ */
+function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
+  const { rows, cols } = dims(board);
+  if (rows === 0 || cols === 0) return null;
+
+  const runs = findAllRuns(board);
+  if (runs.length === 0) return null;
+
+  // Helper: check if mask[r][c] is true and in-bounds.
+  const isMatched = (r: number, c: number): boolean => {
+    return r >= 0 && r < rows && c >= 0 && c < cols && mask[r]![c] === true;
+  };
+
+  // ----------------------
+  // 1) 5-in-a-row (or longer) -> Hypercube
+  // We'll take the first such run and place the cube near the center.
+  // ----------------------
+  for (const run of runs) {
+    if (run.len < 5) continue;
+    if (run.kind === "H") {
+      const r = run.row;
+      const midIndex = run.start + Math.floor((run.len - 1) / 2);
+      const c = midIndex;
+      if (isMatched(r, c)) {
+        return { r, c, type: "hypercube" };
+      }
+    } else {
+      const c = run.col;
+      const midIndex = run.start + Math.floor((run.len - 1) / 2);
+      const r = midIndex;
+      if (isMatched(r, c)) {
+        return { r, c, type: "hypercube" };
+      }
+    }
+  }
+
+  // ----------------------
+  // 2) L / T shapes -> Power Gem
+  // Intersection of a horizontal and vertical run of same color.
+  // ----------------------
+  const hRuns = runs.filter((r) => r.kind === "H");
+  const vRuns = runs.filter((r) => r.kind === "V");
+
+  for (const hr of hRuns) {
+    for (const vr of vRuns) {
+      if (hr.color !== vr.color) continue;
+
+      // Intersection cell: row = hr.row, col = vr.col
+      const r = hr.row;
+      const c = vr.col;
+
+      if (r < 0 || c < 0) continue;
+
+      const inH = c >= hr.start && c < hr.start + hr.len;
+      const inV = r >= vr.start && r < vr.start + vr.len;
+      if (!inH || !inV) continue;
+
+      if (isMatched(r, c)) {
+        return { r, c, type: "power" };
+      }
+    }
+  }
+
+  // ----------------------
+  // 3) 4-in-a-row (straight) -> Power Gem
+  // We'll pick the second gem in the run as the special location.
+  // ----------------------
+  for (const run of runs) {
+    if (run.len !== 4) continue;
+
+    if (run.kind === "H") {
+      const r = run.row;
+      const c = run.start + 1; // slightly inward, not edge
+      if (isMatched(r, c)) {
+        return { r, c, type: "power" };
+      }
+    } else {
+      const c = run.col;
+      const r = run.start + 1;
+      if (isMatched(r, c)) {
+        return { r, c, type: "power" };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Actually write the special gem into the board and ensure
+ * it is NOT cleared in this pass (so it won't explode immediately).
+ */
+function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialGem | null): void {
+  if (!special) return;
+
+  const { r, c, type } = special;
+  if (!inBounds(board, r, c)) return;
+
+  const row = board[r];
+  if (!row) return;
+
+  const v = row[c];
+  if (typeof v !== "number" || v < 0) return;
+
+  const color = getBaseColor(v);
+
+  // Remove this cell from the clear mask for this pass
+  mask[r]![c] = false;
+
+  if (type === "power") {
+    row[c] = (color | FLAG_POWER) as number;
+  } else {
+    // hypercube
+    row[c] = (color | FLAG_HYPERCUBE) as number;
+  }
+}
+
+// ------------------------------------------------------------
+// Special-gem expansion (Power 3x3, Hypercube color wipe)
+// ------------------------------------------------------------
+
+/**
+ * For any cell that is both in the mask and a Power Gem,
+ * mark its 3x3 neighborhood (center + 8 neighbors).
  */
 function expandForPowerGems(board: Board, mask: boolean[][]): void {
   const { rows, cols } = dims(board);
   if (rows === 0 || cols === 0) return;
 
-  // Collect positions of power gems that are already in the mask
   const centers: CellRC[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -107,7 +341,6 @@ function expandForPowerGems(board: Board, mask: boolean[][]): void {
     }
   }
 
-  // For each power gem, mark its 3x3 neighborhood (8 surrounding + center)
   for (const cell of centers) {
     const cr = cell.r;
     const cc = cell.c;
@@ -122,15 +355,14 @@ function expandForPowerGems(board: Board, mask: boolean[][]): void {
   }
 }
 
-
 /**
- * Expand the mask for hypercubes:
- *   - For any cell that is in the mask and a hypercube,
- *     determine its base color, then mark EVERY gem on the board
- *     of that base color as true in the mask.
+ * For any cell that is both in the mask and a Hypercube,
+ * wipe all gems of its base color across the board.
  *
- * This is a simplified classic-Bejeweled behavior: "destroy all gems
- * of the chosen color."
+ * NOTE: Classic Bejeweled 2 activates Hypercubes when SWAPPED with
+ * a gem, not by simple matching. Here we approximate by color-wiping
+ * when a Hypercube is part of the matched mask. To get exact
+ * "swap-to-fire" behavior, we'd add logic in swap.ts.
  */
 function expandForHypercubes(board: Board, mask: boolean[][]): void {
   const { rows, cols } = dims(board);
@@ -138,15 +370,15 @@ function expandForHypercubes(board: Board, mask: boolean[][]): void {
 
   const colorsToWipe: number[] = [];
 
-  // First pass: find which hypercube colors are involved
+  // First, discover which colors are associated with hypercubes in this mask
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (!mask[r]![c]) continue;
       const v = board[r]?.[c];
       if (typeof v === "number" && v >= 0 && isHypercube(v)) {
-        const base = getBaseColor(v);
-        if (!colorsToWipe.includes(base)) {
-          colorsToWipe.push(base);
+        const color = getBaseColor(v);
+        if (!colorsToWipe.includes(color)) {
+          colorsToWipe.push(color);
         }
       }
     }
@@ -154,15 +386,15 @@ function expandForHypercubes(board: Board, mask: boolean[][]): void {
 
   if (colorsToWipe.length === 0) return;
 
-  // Second pass: mark all gems of those colors
+  // Then mark all gems of those colors
   for (let r = 0; r < rows; r++) {
     const row = board[r];
     if (!row) continue;
     for (let c = 0; c < cols; c++) {
       const v = row[c];
       if (typeof v !== "number" || v < 0) continue;
-      const base = getBaseColor(v);
-      if (colorsToWipe.includes(base)) {
+      const color = getBaseColor(v);
+      if (colorsToWipe.includes(color)) {
         mask[r]![c] = true;
       }
     }
@@ -187,7 +419,6 @@ function applyClearMask(board: Board, mask: boolean[][]): number {
       if (!mrow[c]) continue;
       const v = row[c];
       if (typeof v === "number" && v >= 0) {
-        // Clear this cell
         row[c] = -1;
         cleared++;
       }
@@ -197,11 +428,14 @@ function applyClearMask(board: Board, mask: boolean[][]): number {
   return cleared;
 }
 
-// ---- Public API ---------------------------------------------------------
+// ------------------------------------------------------------
+// Public API
+// ------------------------------------------------------------
 
 /**
- * Clear all matched cells on the board, expanding for power gems
- * and hypercubes, and return the base points earned for this pass.
+ * Clear all matched cells on the board, expanding for Power Gems
+ * and Hypercubes, creating new special gems when appropriate,
+ * and return the base points earned for this pass.
  *
  * The caller (main.ts) is responsible for:
  *   - applying chain multipliers
@@ -214,21 +448,24 @@ export function clearAndScore(board: Board, matches: CellRC[]): number {
   const { rows, cols } = dims(board);
   if (rows === 0 || cols === 0) return 0;
 
-  // 1) Base mask from raw matches
+  // 1) Build initial mask from the raw matches
   const mask = buildBaseMask(board, matches);
 
-  // 2) Expand for special gems
+  // 2) Identify one special gem to create (Power / Hypercube)
+  const special = pickSpecialGem(board, mask);
+
+  // 3) Apply that creation, making sure it is NOT cleared this pass
+  applySpecialCreation(board, mask, special);
+
+  // 4) Expand for existing Power Gems (3x3) and Hypercubes (color wipe)
   expandForPowerGems(board, mask);
   expandForHypercubes(board, mask);
 
-  // 3) Clear and count
+  // 5) Clear and count
   const cleared = applyClearMask(board, mask);
   if (cleared <= 0) return 0;
 
-  const perCell = USER_SCORING?.perCell ?? 10;
-
-  // You can add bonus logic here later if you want, based on
-  // shapes/runs. For now we keep it very simple:
+  const perCell = USER_SCORING.perCell;
   const basePoints = cleared * perCell;
 
   return basePoints;
