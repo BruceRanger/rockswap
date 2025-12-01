@@ -1,56 +1,38 @@
-// ============================================================
+// ================================================================
 // File: src/core/cell.ts
-// Purpose: Special-gem encoding (normal, power, hypercube)
-// ============================================================
+// Purpose: Bit-flags and helpers for special gem types
+//          (power gem, hypercube, etc.)
+// ================================================================
 
-// Empty cell
-export const EMPTY = -1;
+// Base gem values are 0..(KINDS-1).
+// We encode special gems by adding bit flags above the color index.
+//
+// Example:
+//   value = color | FLAG_POWER
+//   value = color | FLAG_HYPERCUBE
+//
+// The renderer can check these flags to draw differently.
+// The board logic can check these flags to apply special effects.
 
-// Bit masks for special gems
-const POWER_BIT = 1 << 8; // 256
-const HYPER_BIT = 1 << 9; // 512
+// --- Flag bits --------------------------------------------------
 
-// ------------------------------------------------------------
-// Creation helpers
-// ------------------------------------------------------------
+export const FLAG_POWER     = 1 << 8; // 256
+export const FLAG_HYPERCUBE = 1 << 9; // 512
 
-/** Normal gem: just a color index 0..255 (low 8 bits). */
-export function makeNormal(color: number): number {
-  return color & 0xff;
+// Mask for the base gem color (low byte only).
+export const COLOR_MASK = 0xff;
+
+// Return just the underlying base color (0..KINDS-1), hiding flags.
+// match.ts imports this as `baseColor` and aliases it to getBaseColor.
+export function baseColor(value: number): number {
+  return value & COLOR_MASK;
 }
 
-/** Power gem: same base color with POWER_BIT added. */
-export function makePowerGem(color: number): number {
-  return (color & 0xff) | POWER_BIT;
+// Convenience helpers for game logic / renderer.
+export function isPowerGem(value: number): boolean {
+  return (value & FLAG_POWER) !== 0;
 }
 
-/** Hypercube: uses only the hyper flag. */
-export function makeHypercube(): number {
-  return HYPER_BIT;
-}
-
-// ------------------------------------------------------------
-// Detection helpers
-// ------------------------------------------------------------
-
-export function isEmpty(v: number): boolean {
-  return v === EMPTY;
-}
-
-export function isHypercube(v: number): boolean {
-  return (v & HYPER_BIT) !== 0;
-}
-
-export function isPowerGem(v: number): boolean {
-  return !isHypercube(v) && (v & POWER_BIT) !== 0;
-}
-
-export function isSpecial(v: number): boolean {
-  return isPowerGem(v) || isHypercube(v);
-}
-
-/** Base color 0..255 extracted from low byte. */
-export function baseColorOf(v: number): number {
-  if (v < 0) return EMPTY;
-  return v & 0xff;
+export function isHypercube(value: number): boolean {
+  return (value & FLAG_HYPERCUBE) !== 0;
 }
