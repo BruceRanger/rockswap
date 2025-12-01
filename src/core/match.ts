@@ -2,12 +2,14 @@
 // File: src/core/match.ts
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
-// - A match is any run of length >= 3 of the same non-negative value.
+// - A match is any run of length >= 3 of the same base color,
+//   ignoring special-gem flags (power, hypercube, etc.).
 // - Strict-mode safe (no possibly-undefined warnings).
 // - Exports both a mask-based finder and a cell-list finder.
 // ============================================================
 
 import type { Board } from "./grid";
+import { baseColor as getBaseColor } from "./cell";
 
 export type CellRC = { r: number; c: number };
 
@@ -56,38 +58,54 @@ export function findMatchesMask(board: Board): boolean[][] {
 
   const mask = makeMask(rows, cols);
 
-  // Horizontal runs
+  // ---------- Horizontal runs ----------
   for (let r = 0; r < rows; r++) {
     const row = board[r]!;
     let c = 0;
     while (c < cols) {
-      const val = row[c]!;
-      if (val < 0) {
+      const raw = row[c]!;
+      if (raw < 0) {
         c++;
         continue;
       }
+      const color = getBaseColor(raw);
       let start = c;
       c++;
-      while (c < cols && row[c]! === val) c++;
+      while (c < cols) {
+        const nextRaw = row[c]!;
+        if (nextRaw < 0) break;
+        if (getBaseColor(nextRaw) !== color) break;
+        c++;
+      }
       const runLen = c - start;
-      if (runLen >= 3) markRow(mask, r, start, c - 1);
+      if (runLen >= 3) {
+        markRow(mask, r, start, c - 1);
+      }
     }
   }
 
-  // Vertical runs
+  // ---------- Vertical runs ----------
   for (let c = 0; c < cols; c++) {
     let r = 0;
     while (r < rows) {
-      const val = board[r]![c]!;
-      if (val < 0) {
+      const raw = board[r]![c]!;
+      if (raw < 0) {
         r++;
         continue;
       }
+      const color = getBaseColor(raw);
       let start = r;
       r++;
-      while (r < rows && board[r]![c]! === val) r++;
+      while (r < rows) {
+        const nextRaw = board[r]![c]!;
+        if (nextRaw < 0) break;
+        if (getBaseColor(nextRaw) !== color) break;
+        r++;
+      }
       const runLen = r - start;
-      if (runLen >= 3) markCol(mask, c, start, r - 1);
+      if (runLen >= 3) {
+        markCol(mask, c, start, r - 1);
+      }
     }
   }
 
