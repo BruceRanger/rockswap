@@ -9,7 +9,8 @@
 
 import type { Board } from "./grid";
 import { findMatches } from "./match";
-import { isEmpty, isHypercube, baseColorOf } from "./cell";
+import { isEmpty, isPowerGem, isHypercube, baseColor } from "./cell";
+
 import { collapse } from "./collapse";
 import { refill } from "./refill";
 
@@ -97,9 +98,9 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
       // Determine the target color from the *non-hyper* partner
       let targetColor = -1;
       if (aHyper && !bHyper) {
-        targetColor = baseColorOf(b);
+        targetColor = baseColor(b);
       } else if (bHyper && !aHyper) {
-        targetColor = baseColorOf(a);
+        targetColor = baseColor(a);
       }
 
       // Clear:
@@ -116,7 +117,7 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
             // Hypercube removes itself
             row[c] = -1;
           } else {
-            if (targetColor >= 0 && baseColorOf(v) === targetColor) {
+            if (targetColor >= 0 && baseColor(v) === targetColor) {
               row[c] = -1;
             }
           }
