@@ -95,31 +95,33 @@ function expandForPowerGems(board: Board, mask: boolean[][]): void {
   const { rows, cols } = dims(board);
   if (rows === 0 || cols === 0) return;
 
-  // Copy of current mask to avoid re-expanding newly added cells in this pass
-  const toExpand: CellRC[] = [];
+  // Collect positions of power gems that are already in the mask
+  const centers: CellRC[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (!mask[r]![c]) continue;
       const v = board[r]?.[c];
       if (typeof v === "number" && v >= 0 && isPowerGem(v)) {
-        toExpand.push({ r, c });
+        centers.push({ r, c });
       }
     }
   }
 
-  for (const cell of toExpand) {
-    const r = cell.r;
-    const c = cell.c;
-    // Row
-    for (let cc = 0; cc < cols; cc++) {
-      mask[r]![cc] = true;
-    }
-    // Column
-    for (let rr = 0; rr < rows; rr++) {
-      mask[rr]![c] = true;
+  // For each power gem, mark its 3x3 neighborhood (8 surrounding + center)
+  for (const cell of centers) {
+    const cr = cell.r;
+    const cc = cell.c;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const rr = cr + dr;
+        const cc2 = cc + dc;
+        if (rr < 0 || rr >= rows || cc2 < 0 || cc2 >= cols) continue;
+        mask[rr]![cc2] = true;
+      }
     }
   }
 }
+
 
 /**
  * Expand the mask for hypercubes:
