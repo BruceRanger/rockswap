@@ -2,14 +2,14 @@
 // File: src/core/match.ts
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
-// - A match is any run of length >= 3 of the same base color,
-//   ignoring special-gem flags (power, hypercube, etc.).
+// - A match is any run of length >= 3 of the same non-negative
+//   *base color* (ignoring Power/Hypercube flags).
 // - Strict-mode safe (no possibly-undefined warnings).
 // - Exports both a mask-based finder and a cell-list finder.
 // ============================================================
 
 import type { Board } from "./grid";
-import { baseColor as getBaseColor } from "./cell";
+import { baseColor } from "./cell";
 
 export type CellRC = { r: number; c: number };
 
@@ -49,6 +49,10 @@ function markCol(mask: boolean[][], c: number, start: number, end: number): void
 /**
  * Internal: build a boolean mask of matches.
  * Returns a mask: true where the cell should be cleared.
+ *
+ * IMPORTANT:
+ *   We match by baseColor(value), so that Power Gems / Hypercubes
+ *   still match with normal gems of the same color.
  */
 export function findMatchesMask(board: Board): boolean[][] {
   const rows = board.length;
@@ -58,25 +62,30 @@ export function findMatchesMask(board: Board): boolean[][] {
 
   const mask = makeMask(rows, cols);
 
-  // ---------- Horizontal runs ----------
+  // ----------------------------------------------------------
+  // Horizontal runs
+  // ----------------------------------------------------------
   for (let r = 0; r < rows; r++) {
     const row = board[r]!;
     let c = 0;
     while (c < cols) {
-      const raw = row[c]!;
-      if (raw < 0) {
+      const v0 = row[c]!;
+      if (v0 < 0) {
         c++;
         continue;
       }
-      const color = getBaseColor(raw);
+
+      const color = baseColor(v0);
       let start = c;
       c++;
+
       while (c < cols) {
-        const nextRaw = row[c]!;
-        if (nextRaw < 0) break;
-        if (getBaseColor(nextRaw) !== color) break;
+        const v = row[c]!;
+        if (v < 0) break;
+        if (baseColor(v) !== color) break;
         c++;
       }
+
       const runLen = c - start;
       if (runLen >= 3) {
         markRow(mask, r, start, c - 1);
@@ -84,24 +93,29 @@ export function findMatchesMask(board: Board): boolean[][] {
     }
   }
 
-  // ---------- Vertical runs ----------
+  // ----------------------------------------------------------
+  // Vertical runs
+  // ----------------------------------------------------------
   for (let c = 0; c < cols; c++) {
     let r = 0;
     while (r < rows) {
-      const raw = board[r]![c]!;
-      if (raw < 0) {
+      const v0 = board[r]![c]!;
+      if (v0 < 0) {
         r++;
         continue;
       }
-      const color = getBaseColor(raw);
+
+      const color = baseColor(v0);
       let start = r;
       r++;
+
       while (r < rows) {
-        const nextRaw = board[r]![c]!;
-        if (nextRaw < 0) break;
-        if (getBaseColor(nextRaw) !== color) break;
+        const v = board[r]![c]!;
+        if (v < 0) break;
+        if (baseColor(v) !== color) break;
         r++;
       }
+
       const runLen = r - start;
       if (runLen >= 3) {
         markCol(mask, c, start, r - 1);
