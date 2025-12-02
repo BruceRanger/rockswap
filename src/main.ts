@@ -23,7 +23,7 @@ const hud = document.getElementById("hud") as HTMLDivElement;
 const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
 if (versionEl) {
-  const updated = new Date(document.lastModified).toISOString().split("T")[0];
+  const updated = new Date(document.lastModified).toISOString(); // .split("T")[0];
   versionEl.textContent = ` • Version: ${packageInfo.version} • Updated: ${updated}`;
 }
 
