@@ -79,21 +79,22 @@ export function trySwap(
   row2[c2] = a;
 
   // After swapping, check if this created ANY match on the board.
-  // `findMatches` now uses `baseColor`, so stars/power gems count
+  // `findMatches` now uses baseColor, so stars/power gems count
   // as their base color in lines.
   const matches = findMatches(board);
-  const madeMatch = matches.length > 0;
+  const createdMatch = matches.length > 0;
 
-  if (madeMatch) {
-    // Keep the swap; resolveBoard() will handle clears & cascades.
-    return true;
+  if (!createdMatch) {
+    // No match: undo and reject
+    row1[c1] = a;
+    row2[c2] = b;
+    return false;
   }
 
-  // No match: undo the swap and reject the move
-  row1[c1] = a;
-  row2[c2] = b;
-  return false;
+  // Swap is valid; keep it. resolveBoard() will handle clears & cascades.
+  return true;
 }
+
 
 
   // =========================================================
