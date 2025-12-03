@@ -52,14 +52,20 @@ function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): b
  *   - If NO matches anywhere → revert swap, return false
  *   - If YES matches → keep swap, return true
  */
-export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
+export function trySwap(
+  board: Board,
+  r1: number,
+  c1: number,
+  r2: number,
+  c2: number
+): boolean {
   // Bounds + adjacency
   if (!inBounds(board, r1, c1) || !inBounds(board, r2, c2)) return false;
   if (!isAdjacent({ r: r1, c: c1 }, { r: r2, c: c2 })) return false;
 
   const row1 = board[r1];
   const row2 = board[r2];
-  if (!row1 || !row2) return false; // extra safety
+  if (!row1 || !row2) return false;
 
   const a = row1[c1];
   const b = row2[c2];
@@ -68,8 +74,27 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
   if (typeof a !== "number" || typeof b !== "number") return false;
   if (isEmpty(a) || isEmpty(b)) return false;
 
-  const aHyper = isHypercube(a);
-  const bHyper = isHypercube(b);
+  // --- Do the swap optimistically ---
+  row1[c1] = b;
+  row2[c2] = a;
+
+  // After swapping, check if this created ANY match on the board.
+  // `findMatches` now uses `baseColor`, so stars/power gems count
+  // as their base color in lines.
+  const matches = findMatches(board);
+  const madeMatch = matches.length > 0;
+
+  if (madeMatch) {
+    // Keep the swap; resolveBoard() will handle clears & cascades.
+    return true;
+  }
+
+  // No match: undo the swap and reject the move
+  row1[c1] = a;
+  row2[c2] = b;
+  return false;
+}
+
 
   // =========================================================
   // Hypercube behavior
