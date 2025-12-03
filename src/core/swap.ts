@@ -85,6 +85,3 @@ export function trySwap(
   return true;
 }
 
-
-  return true;
-}
