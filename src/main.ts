@@ -131,6 +131,8 @@ async function resolveBoard() {
       const prevHigh = high;
       high = maybeUpdateHighScore(score);
 
+      updateHUD();
+
       console.log(
         `[resolveBoard] matches=${matches.length}, basePoints=${basePoints}, chain=${chain}, gained=${gained}, ` +
           (high !== prevHigh ? `NEW HIGH=${high}` : `high=${high}`)
