@@ -136,7 +136,6 @@ export function trySwap(
   row2[c2] = a;
 
   // Check only local lines through the swapped cells.
-  // This mirrors how match-3 games determine valid moves.
   const createdMatch =
     hasLineThrough(board, r1, c1) ||
     hasLineThrough(board, r2, c2);
