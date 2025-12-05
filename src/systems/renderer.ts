@@ -32,17 +32,6 @@ export function colorFor(board: number[][], r: number, c: number): string {
 }
 
 
-/*function colorFor(board: number[][], r: number, c: number): string {
-  const row = board[r];
-  const v = row ? row[c] : undefined;
-  if (typeof v === "number" && v >= 0) {
-    const idx = Math.abs(v) % COUNT_OF_ROCK_TYPES;
-    const color = ROCK_COLORS[idx];
-    return typeof color === "string" ? color : "#888";
-  }
-  return "#222";
-}*/
-
 import { baseColor } from "./cell";
 import { COLORS } from "./colors"; // wherever your color list is
 
