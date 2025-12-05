@@ -21,13 +21,6 @@ import { baseColor } from "../core/cell";
 import { ROCK_COLORS } from "../core/colors";   // ← or COLORS, depending on your file name
 import { COUNT_OF_ROCK_TYPES } from "../config"; // only if needed elsewhere
 
-function colorFor(board: Board, r: number, c: number): string {
-  const v = board[r]?.[c];
-  if (typeof v !== "number" || v < 0) return "black";
-  return COLORS[baseColor(v)];
-}
-
-
 
 import { baseColor } from "./cell";
 import { COLORS } from "./colors"; // wherever your color list is
