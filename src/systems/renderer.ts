@@ -17,11 +17,20 @@ function dims(board: number[][]) {
 import { baseColor } from "../core/cell";
 import { COLORS } from "../core/colors";
 
-function colorFor(board, r, c) {
+import { baseColor } from "../core/cell";
+import { ROCK_COLORS } from "../core/colors";   // ← or COLORS, depending on your file name
+import { COUNT_OF_ROCK_TYPES } from "../config"; // only if needed elsewhere
+
+export function colorFor(board: number[][], r: number, c: number): string {
   const v = board[r]?.[c];
-  if (typeof v !== "number" || v < 0) return "black";
-  return COLORS[baseColor(v)];
+  if (typeof v !== "number" || v < 0) return "#222";  // same empty color you used before
+
+  const colorIndex = baseColor(v);   // THIS is the fix!
+  const color = ROCK_COLORS[colorIndex];
+
+  return typeof color === "string" ? color : "#888";
 }
+
 
 /*function colorFor(board: number[][], r: number, c: number): string {
   const row = board[r];
