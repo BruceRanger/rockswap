@@ -15,7 +15,7 @@ function dims(board: number[][]) {
   return { rows, cols };
 }
 
-function colorFor(board: number[][], r: number, c: number): string {
+/*function colorFor(board: number[][], r: number, c: number): string {
   const row = board[r];
   const v = row ? row[c] : undefined;
   if (typeof v === "number" && v >= 0) {
@@ -24,6 +24,15 @@ function colorFor(board: number[][], r: number, c: number): string {
     return typeof color === "string" ? color : "#888";
   }
   return "#222";
+}*/
+
+import { baseColor } from "./cell";
+import { COLORS } from "./colors"; // wherever your color list is
+
+export function colorFor(board: Board, r: number, c: number): string {
+  const v = board[r]?.[c];
+  if (typeof v !== "number" || v < 0) return "black";
+  return COLORS[baseColor(v)];
 }
 
 export function renderBoard(
