@@ -10,7 +10,7 @@
  * Fork this project? Change these to customize your version!
  */
 export const ROCK_COLORS: string[] = [
-  "rgba(128, 128, 128, 1)", // Gray
+  "rgba(255, 0, 0, 1)", // Red
   "rgba(0, 255, 0, 1)", // Green
   "rgba(255, 128, 0, 1)", // Orange
   "rgba(128, 0, 128, 1)", // Purple
