@@ -25,6 +25,7 @@ import {
   FLAG_HYPERCUBE
 } from "./cell";
 
+// Toggle this to enable/disable special-gem debug logging.
 const DEBUG_SPECIALS = true;
 
 // ------------------------------------------------------------
@@ -51,7 +52,7 @@ export const USER_SCORING: UserScoringConfig = {
   perCell: 10,
   bonuses: {
     exact: {
-      4: 0,  // no extra flat bonus; reward comes from Power Gem explosion later
+      4: 0, // no extra flat bonus; reward comes from Power Gem explosion later
       5: 0
     },
     atLeast: {}
@@ -105,9 +106,9 @@ function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
 type Run = {
   kind: "H" | "V";
   color: number;
-  row: number;      // for H: row index
-  col: number;      // for V: col index
-  start: number;    // start index along the run direction
+  row: number; // for H: row index
+  col: number; // for V: col index
+  start: number; // start index along the run direction
   len: number;
 };
 
@@ -227,6 +228,17 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       const midIndex = run.start + Math.floor((run.len - 1) / 2);
       const c = midIndex;
       if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) {
+          const v = board[r]?.[c];
+          console.log("SPECIAL: 5+ RUN HYPERCUBE (H)", {
+            row: r,
+            col: c,
+            runStart: run.start,
+            runLen: run.len,
+            rawValue: v,
+            baseColor: typeof v === "number" ? getBaseColor(v) : null
+          });
+        }
         return { r, c, type: "hypercube" };
       }
     } else {
@@ -234,6 +246,17 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       const midIndex = run.start + Math.floor((run.len - 1) / 2);
       const r = midIndex;
       if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) {
+          const v = board[r]?.[c];
+          console.log("SPECIAL: 5+ RUN HYPERCUBE (V)", {
+            row: r,
+            col: c,
+            runStart: run.start,
+            runLen: run.len,
+            rawValue: v,
+            baseColor: typeof v === "number" ? getBaseColor(v) : null
+          });
+        }
         return { r, c, type: "hypercube" };
       }
     }
@@ -261,63 +284,80 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       if (!inH || !inV) continue;
 
       if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) {
+          const v = board[r]?.[c];
+          console.log("SPECIAL: L/T POWER GEM", {
+            row: r,
+            col: c,
+            hRun: { start: hr.start, len: hr.len, row: hr.row },
+            vRun: { start: vr.start, len: vr.len, col: vr.col },
+            rawValue: v,
+            baseColor: typeof v === "number" ? getBaseColor(v) : null
+          });
+        }
         return { r, c, type: "power" };
       }
     }
   }
 
   // ----------------------
-// 3) 4-in-a-row (straight) -> Power Gem
-// We'll pick the second gem in the run as the special location.
-// ----------------------
-for (const run of runs) {
-  if (run.len !== 4) continue;
+  // 3) 4-in-a-row (straight) -> Power Gem
+  // We'll pick the second gem in the run as the special location.
+  // ----------------------
+  for (const run of runs) {
+    if (run.len !== 4) continue;
 
-  if (run.kind === "H") {
-    const r = run.row;
-    const c = run.start + 1; // slightly inward, not edge
-    if (isMatched(r, c)) {
-      if (DEBUG_SPECIALS) {
-        const v = board[r]?.[c];
-        console.log("SPECIAL: FOUR-RUN HORIZONTAL", {
-          runKind: run.kind,
-          row: r,
-          col: c,
-          runStart: run.start,
-          runLen: run.len,
-          rawValue: v,
-          baseColor: typeof v === "number" ? getBaseColor(v) : null
-        });
+    if (run.kind === "H") {
+      const r = run.row;
+      const c = run.start + 1; // slightly inward, not edge
+      if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) {
+          const v = board[r]?.[c];
+          console.log("SPECIAL: FOUR-RUN HORIZONTAL", {
+            runKind: run.kind,
+            row: r,
+            col: c,
+            runStart: run.start,
+            runLen: run.len,
+            rawValue: v,
+            baseColor: typeof v === "number" ? getBaseColor(v) : null
+          });
+        }
+        return { r, c, type: "power" };
       }
-      return { r, c, type: "power" };
-    }
-  } else {
-    const c = run.col;
-    const r = run.start + 1;
-    if (isMatched(r, c)) {
-      if (DEBUG_SPECIALS) {
-        const v = board[r]?.[c];
-        console.log("SPECIAL: FOUR-RUN VERTICAL", {
-          runKind: run.kind,
-          row: r,
-          col: c,
-          runStart: run.start,
-          runLen: run.len,
-          rawValue: v,
-          baseColor: typeof v === "number" ? getBaseColor(v) : null
-        });
+    } else {
+      const c = run.col;
+      const r = run.start + 1; // second from top
+      if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) {
+          const v = board[r]?.[c];
+          console.log("SPECIAL: FOUR-RUN VERTICAL", {
+            runKind: run.kind,
+            row: r,
+            col: c,
+            runStart: run.start,
+            runLen: run.len,
+            rawValue: v,
+            baseColor: typeof v === "number" ? getBaseColor(v) : null
+          });
+        }
+        return { r, c, type: "power" };
       }
-      return { r, c, type: "power" };
     }
   }
-}
 
+  return null;
+}
 
 /**
  * Actually write the special gem into the board and ensure
  * it is NOT cleared in this pass (so it won't explode immediately).
  */
-function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialGem | null): void {
+function applySpecialCreation(
+  board: Board,
+  mask: boolean[][],
+  special: SpecialGem | null
+): void {
   if (!special) return;
 
   const { r, c, type } = special;
@@ -330,6 +370,20 @@ function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialG
   if (typeof v !== "number" || v < 0) return;
 
   const color = getBaseColor(v);
+
+  if (DEBUG_SPECIALS) {
+    console.log("APPLY SPECIAL CREATION", {
+      type,
+      row: r,
+      col: c,
+      rawValueBefore: v,
+      baseColor: color,
+      finalValue:
+        type === "power"
+          ? (color | FLAG_POWER)
+          : (color | FLAG_HYPERCUBE)
+    });
+  }
 
   // Remove this cell from the clear mask for this pass
   mask[r]![c] = false;
