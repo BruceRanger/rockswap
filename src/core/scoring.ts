@@ -25,6 +25,8 @@ import {
   FLAG_HYPERCUBE
 } from "./cell";
 
+const DEBUG_SPECIALS = true;
+
 // ------------------------------------------------------------
 // User-visible scoring config (for HUD summary)
 // ------------------------------------------------------------
@@ -265,29 +267,51 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
   }
 
   // ----------------------
-  // 3) 4-in-a-row (straight) -> Power Gem
-  // We'll pick the second gem in the run as the special location.
-  // ----------------------
-  for (const run of runs) {
-    if (run.len !== 4) continue;
+// 3) 4-in-a-row (straight) -> Power Gem
+// We'll pick the second gem in the run as the special location.
+// ----------------------
+for (const run of runs) {
+  if (run.len !== 4) continue;
 
-    if (run.kind === "H") {
-      const r = run.row;
-      const c = run.start + 1; // slightly inward, not edge
-      if (isMatched(r, c)) {
-        return { r, c, type: "power" };
+  if (run.kind === "H") {
+    const r = run.row;
+    const c = run.start + 1; // slightly inward, not edge
+    if (isMatched(r, c)) {
+      if (DEBUG_SPECIALS) {
+        const v = board[r]?.[c];
+        console.log("SPECIAL: FOUR-RUN HORIZONTAL", {
+          runKind: run.kind,
+          row: r,
+          col: c,
+          runStart: run.start,
+          runLen: run.len,
+          rawValue: v,
+          baseColor: typeof v === "number" ? getBaseColor(v) : null
+        });
       }
-    } else {
-      const c = run.col;
-      const r = run.start + 1;
-      if (isMatched(r, c)) {
-        return { r, c, type: "power" };
+      return { r, c, type: "power" };
+    }
+  } else {
+    const c = run.col;
+    const r = run.start + 1;
+    if (isMatched(r, c)) {
+      if (DEBUG_SPECIALS) {
+        const v = board[r]?.[c];
+        console.log("SPECIAL: FOUR-RUN VERTICAL", {
+          runKind: run.kind,
+          row: r,
+          col: c,
+          runStart: run.start,
+          runLen: run.len,
+          rawValue: v,
+          baseColor: typeof v === "number" ? getBaseColor(v) : null
+        });
       }
+      return { r, c, type: "power" };
     }
   }
-
-  return null;
 }
+
 
 /**
  * Actually write the special gem into the board and ensure
