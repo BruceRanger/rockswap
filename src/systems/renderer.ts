@@ -17,7 +17,23 @@ function dims(board: number[][]) {
 import { baseColor } from "../core/cell";
 import { COLORS } from "../core/colors";
 
-import { baseColor } from "../core/cell";
+Run npm run build
+
+> rockswap@0.2.0 build
+> vite build
+
+vite v7.2.4 building client environment for production...
+transforming...
+✓ 15 modules transformed.
+✗ Build failed in 118ms
+error during build:
+Could not resolve "./cell" from "src/systems/renderer.ts"
+file: /home/runner/work/rockswap/rockswap/src/systems/renderer.ts
+    at getRollupError (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/node-entry.js:21565:24)
+    at file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/node-entry.js:21525:26
+Error: Process completed with exit code 1.
 import { ROCK_COLORS } from "../core/colors";   // ← or COLORS, depending on your file name
 import { COUNT_OF_ROCK_TYPES } from "../config"; // only if needed elsewhere
 
