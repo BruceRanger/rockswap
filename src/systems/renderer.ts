@@ -5,7 +5,8 @@
 
 import type { Board } from "../core/grid";
 import { baseColor, isPowerGem, isHypercube } from "../core/cell";
-import { COLORS } from "./colors"; // this stayed local in your repo
+import { ROCK_COLORS } from "../config";   // ⬅ NEW: use your existing config
+
 
 // Choose a color for the gem at (r, c).
 // IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
