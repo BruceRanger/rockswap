@@ -14,6 +14,14 @@ function dims(board: number[][]) {
   const cols = rows > 0 ? (board[0] ? board[0]!.length : 0) : 0;
   return { rows, cols };
 }
+import { baseColor } from "../core/cell";
+import { COLORS } from "../core/colors";
+
+function colorFor(board, r, c) {
+  const v = board[r]?.[c];
+  if (typeof v !== "number" || v < 0) return "black";
+  return COLORS[baseColor(v)];
+}
 
 /*function colorFor(board: number[][], r: number, c: number): string {
   const row = board[r];
