@@ -1,51 +1,28 @@
 // ============================================================
 // File: src/systems/renderer.ts
-// Purpose: Draw the board, selection, and match highlights
-// Strict-mode safe: guards all indexed accesses.
+// Purpose: Draw the RockSwap board.
 // ============================================================
 
-import { ROCK_COLORS, COUNT_OF_ROCK_TYPES } from "../config";
-import { isPowerGem, isHypercube } from "../core/cell";
+import type { Board } from "../core/grid";
+import { baseColor, isPowerGem, isHypercube } from "../core/cell";
+import { COLORS } from "./colors"; // this stayed local in your repo
 
-export type CellRC = { r: number; c: number };
+// Choose a color for the gem at (r, c).
+// IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
+// shift the color index.
+function colorFor(board: Board, r: number, c: number): string {
+  const row = board[r];
+  const v = row ? row[c] : undefined;
+  if (typeof v !== "number" || v < 0) {
+    return "#222"; // your old empty-cell color
+  }
 
-function dims(board: number[][]) {
-  const rows = board.length;
-  const cols = rows > 0 ? (board[0] ? board[0]!.length : 0) : 0;
-  return { rows, cols };
+  const colorIndex = baseColor(v);
+  const color = COLORS[colorIndex];
+
+  return typeof color === "string" ? color : "#888";
 }
-import { baseColor } from "../core/cell";
-import { COLORS } from "../core/colors";
 
-Run npm run build
-
-> rockswap@0.2.0 build
-> vite build
-
-vite v7.2.4 building client environment for production...
-transforming...
-✓ 15 modules transformed.
-✗ Build failed in 118ms
-error during build:
-Could not resolve "./cell" from "src/systems/renderer.ts"
-file: /home/runner/work/rockswap/rockswap/src/systems/renderer.ts
-    at getRollupError (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
-    at error (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
-    at ModuleLoader.handleInvalidResolvedId (file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/node-entry.js:21565:24)
-    at file:///home/runner/work/rockswap/rockswap/node_modules/rollup/dist/es/shared/node-entry.js:21525:26
-Error: Process completed with exit code 1.
-import { ROCK_COLORS } from "../core/colors";   // ← or COLORS, depending on your file name
-import { COUNT_OF_ROCK_TYPES } from "../config"; // only if needed elsewhere
-
-
-import { baseColor } from "./cell";
-import { COLORS } from "./colors"; // wherever your color list is
-
-export function colorFor(board: Board, r: number, c: number): string {
-  const v = board[r]?.[c];
-  if (typeof v !== "number" || v < 0) return "black";
-  return COLORS[baseColor(v)];
-}
 
 export function renderBoard(
   ctx: CanvasRenderingContext2D,
