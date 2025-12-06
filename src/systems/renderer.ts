@@ -5,8 +5,17 @@
 
 import type { Board } from "../core/grid";
 import { baseColor, isPowerGem, isHypercube } from "../core/cell";
-import { ROCK_COLORS } from "../config";   // ⬅ NEW: use your existing config
+import { ROCK_COLORS } from "../config";
 
+// Simple row/col type used by the renderer
+export type CellRC = { r: number; c: number };
+
+// Compute board dimensions safely
+function dims(board: Board) {
+  const rows = board.length;
+  const cols = rows > 0 ? (board[0] ? board[0]!.length : 0) : 0;
+  return { rows, cols };
+}
 
 // Choose a color for the gem at (r, c).
 // IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
@@ -15,20 +24,23 @@ function colorFor(board: Board, r: number, c: number): string {
   const row = board[r];
   const v = row ? row[c] : undefined;
   if (typeof v !== "number" || v < 0) {
-    return "#222"; // your old empty-cell color
+    // Empty cell (e.g. after clears, before refill)
+    return "#222";
   }
 
+  // Strip off FLAG_POWER / FLAG_HYPERCUBE bits, keep base 0..N-1
   const colorIndex = baseColor(v);
   const color = ROCK_COLORS[colorIndex];
 
   return typeof color === "string" ? color : "#888";
 }
 
-
-
+// ------------------------------------------------------------
+// Main board renderer
+// ------------------------------------------------------------
 export function renderBoard(
   ctx: CanvasRenderingContext2D,
-  board: number[][],
+  board: Board,
   opts?: {
     highlight?: CellRC[];
     alpha?: number;
@@ -40,7 +52,6 @@ export function renderBoard(
   const H = ctx.canvas.height;
 
   ctx.clearRect(0, 0, W, H);
-
   if (rows === 0 || cols === 0) return;
 
   const cell = Math.floor(Math.min(W / cols, H / rows));
@@ -53,6 +64,7 @@ export function renderBoard(
   for (let r = 0; r < rows; r++) {
     const row = board[r];
     if (!row) continue;
+
     for (let c = 0; c < cols; c++) {
       const x = ox + c * cell;
       const y = oy + r * cell;
@@ -117,7 +129,14 @@ export function renderBoard(
   if (opts && opts.selected) {
     const r = opts.selected.r;
     const c = opts.selected.c;
-    if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && c >= 0 && r < rows && c < cols) {
+    if (
+      Number.isInteger(r) &&
+      Number.isInteger(c) &&
+      r >= 0 &&
+      c >= 0 &&
+      r < rows &&
+      c < cols
+    ) {
       const x = ox + c * cell;
       const y = oy + r * cell;
       ctx.save();
@@ -142,7 +161,7 @@ function getClientXY(ev: MouseEvent | PointerEvent | TouchEvent) {
 }
 
 export function pickCellAt(
-  board: number[][],
+  board: Board,
   canvas: HTMLCanvasElement,
   ev: MouseEvent | PointerEvent | TouchEvent
 ) {
