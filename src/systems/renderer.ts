@@ -19,10 +19,11 @@ function colorFor(board: Board, r: number, c: number): string {
   }
 
   const colorIndex = baseColor(v);
-  const color = COLORS[colorIndex];
+  const color = ROCK_COLORS[colorIndex];
 
   return typeof color === "string" ? color : "#888";
 }
+
 
 
 export function renderBoard(
