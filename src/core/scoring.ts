@@ -262,7 +262,7 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
     }
   }
 
-  // ----------------------
+ /* // ----------------------
   // 2) L / T shapes -> Power Gem
   // Intersection of a horizontal and vertical run of same color.
   // ----------------------
@@ -298,7 +298,7 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
         return { r, c, type: "power" };
       }
     }
-  }
+  }*/
 
   // ----------------------
   // 3) 4-in-a-row (straight) -> Power Gem
