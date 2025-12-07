@@ -1,15 +1,14 @@
 console.log("[RockSwap] main.ts loaded");
+
 // ============================================================
 // File: src/main.ts
-// Purpose: Draw the board, active piece, and "next" preview
-// ------------------------------------------------------------
-// Adds optional highlight overlay for matched cells.
+// Purpose: Main game loop + UI wiring for RockSwap
 // ============================================================
 
 import packageInfo from "../package.json";
 
 import { createBoard } from "./core/grid";
-import { findMatches, hasAny } from "./core/match";
+import { findMatches } from "./core/match";
 import { collapse } from "./core/collapse";
 import { refill } from "./core/refill";
 import { trySwap } from "./core/swap";
@@ -18,12 +17,12 @@ import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
 
 // Grab document elements
-const canvas = document.getElementById("board") as HTMLCanvasElement;
-const hud = document.getElementById("hud") as HTMLDivElement;
+const canvas = document.getElementById("board") as HTMLCanvasElement | null;
+const hud = document.getElementById("hud") as HTMLDivElement | null;
 const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
 if (versionEl) {
-  const updated = new Date(document.lastModified).toISOString(); // .split("T")[0];
+  const updated = new Date(document.lastModified).toISOString(); // full ISO date+time
   versionEl.textContent = ` • Version: ${packageInfo.version} • Updated: ${updated}`;
 }
 
@@ -34,12 +33,14 @@ if (!canvas || !hud || !versionEl) {
 }
 
 const ctx = canvas.getContext("2d");
-if (!ctx) throw new Error("2D canvas context not available");
+if (!ctx) {
+  throw new Error("2D canvas context not available");
+}
 
 // Make sure canvas actually receives pointer events (helps on mobile)
-canvas.style.touchAction = "none"; // prevents browser gestures from swallowing events
-canvas.style.pointerEvents = "auto"; // in case any CSS accidentally disabled it
-canvas.tabIndex = 0; // optional: allow focus if you add keyboard later
+canvas.style.touchAction = "none";
+canvas.style.pointerEvents = "auto";
+canvas.tabIndex = 0;
 
 // ---- Game state ----
 let board = createBoard(); // e.g., size 8x8 filled with random cell types
@@ -74,7 +75,6 @@ function scoringSummary(): string {
 // ---- HUD helper ----
 function updateHUD() {
   hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
-  // Hover tooltip to show scoring rules at a glance
   hud.title = scoringSummary();
 }
 
@@ -86,17 +86,19 @@ function delay(ms: number) {
 function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Promise<void> {
   return new Promise((resolve) => {
     const start = performance.now();
+
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs);
       // Pulsing alpha from 0.4 to 1.0
       const alpha = 0.4 + 0.6 * Math.sin(t * Math.PI * 3);
-      renderBoard(ctx!, board, { highlight: matches, alpha });
+      renderBoard(ctx, board, { highlight: matches, alpha });
       if (t >= 1) {
         resolve();
       } else {
         requestAnimationFrame(step);
       }
     };
+
     requestAnimationFrame(step);
   });
 }
@@ -107,6 +109,8 @@ async function resolveBoard() {
   isResolving = true;
 
   let chain = 1; // increases for each cascade pass
+  let preferred = lastSwapDest;
+  lastSwapDest = null;
 
   try {
     let pass = 0;
@@ -121,43 +125,31 @@ async function resolveBoard() {
 
       await flashMatches(matches, 240);
 
-      // base points from clearing
-      const basePoints = clearAndScore(board, matches);
+      // base points from clearing (give preferred only on first pass)
+      const basePoints = clearAndScore(board, matches, preferred);
+      preferred = null; // cascades don't care about the original swap location
 
-      // apply chain multiplier
-      const gained = basePoints * chain;
-      score += gained;
-
-      // update high immediately after score changes
-      const prevHigh = high;
-      high = maybeUpdateHighScore(score);
-
-      updateHUD();
-
-      console.log(
-        `[resolveBoard] matches=${matches.length}, basePoints=${basePoints}, chain=${chain}, gained=${gained}, ` +
-          (high !== prevHigh ? `NEW HIGH=${high}` : `high=${high}`)
-      );
+      if (basePoints > 0) {
+        score += basePoints * chain;
+        if (score > high) {
+          high = maybeUpdateHighScore(score);
+        }
+      }
 
       collapse(board);
       refill(board);
-      renderBoard(ctx!, board);
 
-      chain += 1; // next cascade is worth more
-      await delay(60);
+      renderBoard(ctx, board);
+
+      chain++;
+      await delay(40); // small pause for cascades
     }
-
-    if (pass >= maxPasses) {
-      console.warn(`[resolveBoard] Hit maxPasses=${maxPasses}. Stopping cascades.`);
-    }
-
-    renderBoard(ctx!, board);
-    updateHUD();
   } catch (e) {
-    console.error("[resolveBoard] error:", e);
+    console.warn("[resolveBoard] error:", e);
   } finally {
     isResolving = false;
-    console.log("[resolveBoard] end (normal)");
+    updateHUD();
+    renderBoard(ctx, board);
   }
 }
 
@@ -206,7 +198,7 @@ async function handlePick(ev: MouseEvent | PointerEvent | TouchEvent) {
 
   // Swap is valid:
   moves++;
-  lastSwapDest = { r: b.r, c: b.c };  // <-- moved-to cell for special gem placement
+  lastSwapDest = { r: b.r, c: b.c }; // the moved-to cell for special gem placement
   updateHUD();
 
   try {
@@ -215,3 +207,34 @@ async function handlePick(ev: MouseEvent | PointerEvent | TouchEvent) {
     console.warn("[handlePick] resolveBoard failed:", e);
   }
 }
+
+// ---- Wire up events ----
+
+// Prefer pointer events (works for mouse + touch without 300ms delay)
+canvas.addEventListener("pointerdown", handlePick);
+
+document.getElementById("clear-data")?.addEventListener("click", () => {
+  clearHighScore();
+  high = 0;
+  updateHUD();
+});
+
+document.getElementById("restart-btn")?.addEventListener("click", () => {
+  // Reset game state
+  board = createBoard();
+  score = 0;
+  moves = 0;
+  firstPick = null;
+  lastSwapDest = null;
+
+  // Redraw and resolve initial matches (if any)
+  renderBoard(ctx, board);
+  resolveBoard()
+    .then(() => console.log("[restart] resolve complete"))
+    .catch((e) => console.warn("[restart] resolve failed:", e))
+    .finally(() => updateHUD());
+});
+
+// ---- Initial draw ----
+renderBoard(ctx, board);
+updateHUD();
