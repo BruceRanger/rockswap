@@ -17,6 +17,29 @@ function dims(board: Board) {
   return { rows, cols };
 }
 
+// Convert "rgb(r, g, b)" or "rgba(r, g, b, a)" into its inverse
+// "rgba(255-r, 255-g, 255-b, a)".
+function invertRGBA(rgba: string): string {
+  const match = rgba.match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+)\s*)?\)/
+  );
+  if (!match) {
+    // Fallback if parsing fails
+    return "white";
+  }
+
+  const r = Number(match[1]);
+  const g = Number(match[2]);
+  const b = Number(match[3]);
+  const a = match[4] !== undefined ? Number(match[4]) : 1;
+
+  const ir = 255 - r;
+  const ig = 255 - g;
+  const ib = 255 - b;
+
+  return `rgba(${ir}, ${ig}, ${ib}, ${a})`;
+}
+
 // Choose a color for the gem at (r, c).
 // IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
 // shift the color index.
@@ -81,7 +104,11 @@ export function renderBoard(
       // ======================================================
       const v = row[c];
       if (typeof v === "number" && v >= 0) {
-        ctx.fillStyle = "white";
+        const baseIndex = baseColor(v);
+        const baseColorCss = ROCK_COLORS[baseIndex] ?? "rgba(128,128,128,1)";
+        const iconColor = invertRGBA(baseColorCss);
+
+        ctx.fillStyle = iconColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.font = `${Math.floor(cell * 0.6)}px sans-serif`;
@@ -110,12 +137,12 @@ export function renderBoard(
 
     for (const cellRC of opts.highlight) {
       if (!cellRC) continue;
-      const r = cellRC.r;
-      const c = cellRC.c;
-      if (r < 0 || c < 0 || r >= rows || c >= cols) continue;
+      const rr = cellRC.r;
+      const cc = cellRC.c;
+      if (rr < 0 || cc < 0 || rr >= rows || cc >= cols) continue;
 
-      const x = ox + c * cell;
-      const y = oy + r * cell;
+      const x = ox + cc * cell;
+      const y = oy + rr * cell;
       ctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
     }
 
@@ -127,18 +154,18 @@ export function renderBoard(
   // Draw selected outline
   // ----------------------------
   if (opts && opts.selected) {
-    const r = opts.selected.r;
-    const c = opts.selected.c;
+    const rr = opts.selected.r;
+    const cc = opts.selected.c;
     if (
-      Number.isInteger(r) &&
-      Number.isInteger(c) &&
-      r >= 0 &&
-      c >= 0 &&
-      r < rows &&
-      c < cols
+      Number.isInteger(rr) &&
+      Number.isInteger(cc) &&
+      rr >= 0 &&
+      cc >= 0 &&
+      rr < rows &&
+      cc < cols
     ) {
-      const x = ox + c * cell;
-      const y = oy + r * cell;
+      const x = ox + cc * cell;
+      const y = oy + rr * cell;
       ctx.save();
       ctx.lineWidth = 4;
       ctx.strokeStyle = "rgba(255,255,255,0.9)";
