@@ -48,6 +48,7 @@ let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
 let isResolving = false; // to prevent input during resolution
 let high = loadHighScore();
+let lastSwapDest: { r: number; c: number } | null = null;
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
