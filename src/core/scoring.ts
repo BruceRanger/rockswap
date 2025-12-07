@@ -3,7 +3,7 @@
 // Purpose:
 //   - Classic-style Bejeweled 2 scoring & special gems.
 //   - Turn a list of matched cells into a clear-mask.
-//   - Create Power Gems (4 / L / T) and Hypercubes (5-line).
+//   - Create Power Gems (4-line) and Hypercubes (5-line).
 //   - Ensure newly created specials do NOT explode immediately.
 //   - Expand clears for existing Power Gems / Hypercubes.
 //   - Clear those cells on the board and return base points.
@@ -100,7 +100,7 @@ function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
 }
 
 // ------------------------------------------------------------
-// Run detection (for 4/L/T/5 shapes)
+// Run detection (for 4/5 shapes)
 // ------------------------------------------------------------
 
 type Run = {
@@ -179,7 +179,7 @@ function findAllRuns(board: Board): Run[] {
           kind: "V",
           color,
           row: -1,
-          col: c,
+          col,
           start,
           len
         });
@@ -201,11 +201,16 @@ type SpecialGem = { r: number; c: number; type: SpecialType };
  * Pick at most one special gem to create, based on the
  * current runs and match mask, following Bejeweled 2 priorities:
  *
+ * 0) If we know the moved-to cell, prefer putting the special THERE.
  * 1) 5-in-a-row (straight) -> Hypercube
- * 2) L / T shapes (overlap of H & V runs) -> Power Gem
+ * 2) (L/T shapes disabled)
  * 3) 4-in-a-row (straight) -> Power Gem
  */
-function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
+function pickSpecialGem(
+  board: Board,
+  mask: boolean[][],
+  preferred: CellRC | null
+): SpecialGem | null {
   const { rows, cols } = dims(board);
   if (rows === 0 || cols === 0) return null;
 
@@ -218,8 +223,66 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
   };
 
   // ----------------------
+  // 0) Preferred cell: try to put special at the moved-to cell.
+  // ----------------------
+  if (preferred) {
+    const pr = preferred.r | 0;
+    const pc = preferred.c | 0;
+
+    if (pr >= 0 && pr < rows && pc >= 0 && pc < cols && mask[pr]?.[pc]) {
+      for (const run of runs) {
+        if (run.kind === "H") {
+          if (run.row !== pr) continue;
+          const inRun = pc >= run.start && pc < run.start + run.len;
+          if (!inRun) continue;
+
+          if (run.len >= 5) {
+            if (DEBUG_SPECIALS) {
+              console.log("SPECIAL: preferred HYPERCUBE at preferred (H)", {
+                preferred,
+                run
+              });
+            }
+            return { r: pr, c: pc, type: "hypercube" };
+          } else if (run.len === 4) {
+            if (DEBUG_SPECIALS) {
+              console.log("SPECIAL: preferred POWER at preferred (H)", {
+                preferred,
+                run
+              });
+            }
+            return { r: pr, c: pc, type: "power" };
+          }
+        } else {
+          // Vertical
+          if (run.col !== pc) continue;
+          const inRun = pr >= run.start && pr < run.start + run.len;
+          if (!inRun) continue;
+
+          if (run.len >= 5) {
+            if (DEBUG_SPECIALS) {
+              console.log("SPECIAL: preferred HYPERCUBE at preferred (V)", {
+                preferred,
+                run
+              });
+            }
+            return { r: pr, c: pc, type: "hypercube" };
+          } else if (run.len === 4) {
+            if (DEBUG_SPECIALS) {
+              console.log("SPECIAL: preferred POWER at preferred (V)", {
+                preferred,
+                run
+              });
+            }
+            return { r: pr, c: pc, type: "power" };
+          }
+        }
+      }
+    }
+  }
+
+  // ----------------------
   // 1) 5-in-a-row (or longer) -> Hypercube
-  // We'll take the first such run and place the cube near the center.
   // ----------------------
   for (const run of runs) {
     if (run.len < 5) continue;
@@ -262,7 +325,7 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
     }
   }
 
- /* // ----------------------
+  /*  // ----------------------
   // 2) L / T shapes -> Power Gem
   // Intersection of a horizontal and vertical run of same color.
   // ----------------------
@@ -284,25 +347,14 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       if (!inH || !inV) continue;
 
       if (isMatched(r, c)) {
-        if (DEBUG_SPECIALS) {
-          const v = board[r]?.[c];
-          console.log("SPECIAL: L/T POWER GEM", {
-            row: r,
-            col: c,
-            hRun: { start: hr.start, len: hr.len, row: hr.row },
-            vRun: { start: vr.start, len: vr.len, col: vr.col },
-            rawValue: v,
-            baseColor: typeof v === "number" ? getBaseColor(v) : null
-          });
-        }
         return { r, c, type: "power" };
       }
     }
-  }*/
+  }
+  */
 
   // ----------------------
   // 3) 4-in-a-row (straight) -> Power Gem
-  // We'll pick the second gem in the run as the special location.
   // ----------------------
   for (const run of runs) {
     if (run.len !== 4) continue;
@@ -313,8 +365,7 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       if (isMatched(r, c)) {
         if (DEBUG_SPECIALS) {
           const v = board[r]?.[c];
-          console.log("SPECIAL: FOUR-RUN HORIZONTAL", {
-            runKind: run.kind,
+          console.log("SPECIAL: 4-RUN POWER (H)", {
             row: r,
             col: c,
             runStart: run.start,
@@ -327,12 +378,11 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
       }
     } else {
       const c = run.col;
-      const r = run.start + 1; // second from top
+      const r = run.start + 1;
       if (isMatched(r, c)) {
         if (DEBUG_SPECIALS) {
           const v = board[r]?.[c];
-          console.log("SPECIAL: FOUR-RUN VERTICAL", {
-            runKind: run.kind,
+          console.log("SPECIAL: 4-RUN POWER (V)", {
             row: r,
             col: c,
             runStart: run.start,
@@ -353,11 +403,7 @@ function pickSpecialGem(board: Board, mask: boolean[][]): SpecialGem | null {
  * Actually write the special gem into the board and ensure
  * it is NOT cleared in this pass (so it won't explode immediately).
  */
-function applySpecialCreation(
-  board: Board,
-  mask: boolean[][],
-  special: SpecialGem | null
-): void {
+function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialGem | null): void {
   if (!special) return;
 
   const { r, c, type } = special;
@@ -371,27 +417,12 @@ function applySpecialCreation(
 
   const color = getBaseColor(v);
 
-  if (DEBUG_SPECIALS) {
-    console.log("APPLY SPECIAL CREATION", {
-      type,
-      row: r,
-      col: c,
-      rawValueBefore: v,
-      baseColor: color,
-      finalValue:
-        type === "power"
-          ? (color | FLAG_POWER)
-          : (color | FLAG_HYPERCUBE)
-    });
-  }
-
   // Remove this cell from the clear mask for this pass
   mask[r]![c] = false;
 
   if (type === "power") {
     row[c] = (color | FLAG_POWER) as number;
   } else {
-    // hypercube
     row[c] = (color | FLAG_HYPERCUBE) as number;
   }
 }
@@ -436,11 +467,6 @@ function expandForPowerGems(board: Board, mask: boolean[][]): void {
 /**
  * For any cell that is both in the mask and a Hypercube,
  * wipe all gems of its base color across the board.
- *
- * NOTE: Classic Bejeweled 2 activates Hypercubes when SWAPPED with
- * a gem, not by simple matching. Here we approximate by color-wiping
- * when a Hypercube is part of the matched mask. To get exact
- * "swap-to-fire" behavior, we'd add logic in swap.ts.
  */
 function expandForHypercubes(board: Board, mask: boolean[][]): void {
   const { rows, cols } = dims(board);
@@ -514,12 +540,12 @@ function applyClearMask(board: Board, mask: boolean[][]): number {
  * Clear all matched cells on the board, expanding for Power Gems
  * and Hypercubes, creating new special gems when appropriate,
  * and return the base points earned for this pass.
- *
- * The caller (main.ts) is responsible for:
- *   - applying chain multipliers
- *   - collapsing and refilling the board
  */
-export function clearAndScore(board: Board, matches: CellRC[]): number {
+export function clearAndScore(
+  board: Board,
+  matches: CellRC[],
+  preferred?: CellRC | null
+): number {
   if (!board || board.length === 0) return 0;
   if (!matches || matches.length === 0) return 0;
 
@@ -530,7 +556,7 @@ export function clearAndScore(board: Board, matches: CellRC[]): number {
   const mask = buildBaseMask(board, matches);
 
   // 2) Identify one special gem to create (Power / Hypercube)
-  const special = pickSpecialGem(board, mask);
+  const special = pickSpecialGem(board, mask, preferred ?? null);
 
   // 3) Apply that creation, making sure it is NOT cleared this pass
   applySpecialCreation(board, mask, special);
