@@ -171,73 +171,47 @@ async function handlePick(ev: MouseEvent | PointerEvent | TouchEvent) {
     return;
   }
 
-  const cell = pickCellAt(board, canvas!, ev);
-  console.log("pickCellAt ->", cell);
-  if (!cell) return;
-
-  if (!firstPick) {
-    firstPick = cell;
-    renderBoard(ctx!, board, { selected: firstPick });
-  } else {
-    const ok = trySwap(board, firstPick.r, firstPick.c, cell.r, cell.c);
-    console.log("trySwap ->", ok);
-    if (ok) {
-      moves += 1;
-      firstPick = null;
-      renderBoard(ctx!, board);
-      await resolveBoard();
-    } else {
-      firstPick = null;
-      renderBoard(ctx!, board);
-    }
+  const picked = pickCellAt(board, canvas, ev);
+  if (!picked) {
+    console.warn("[handlePick] No cell picked.");
+    return;
   }
 
-  updateHUD();
-}
+  // First click: select a cell
+  if (!firstPick) {
+    firstPick = picked;
+    renderBoard(ctx, board, { selected: picked });
+    return;
+  }
 
-// Prefer pointer events (works for mouse + touch without 300ms delay)
-canvas.addEventListener("pointerdown", handlePick);
-
-document.getElementById("clear-data")?.addEventListener("click", () => {
-  clearHighScore();
-  high = 0;
-  updateHUD();
-});
-
-document.getElementById("restart-btn")?.addEventListener("click", () => {
-  // Reset game state
-  board = createBoard();
-  score = 0;
-  moves = 0;
+  // Second click: attempt a swap
+  const a = firstPick;
+  const b = picked;
   firstPick = null;
 
-  // Redraw and resolve
-  renderBoard(ctx, board);
-  resolveBoard()
-    .then(() => console.log("[restart] resolve complete"))
-    .catch((e) => console.warn("[restart] resolve failed:", e))
-    .finally(() => updateHUD());
-});
+  // If player clicked the same cell twice, just clear selection
+  if (a.r === b.r && a.c === b.c) {
+    renderBoard(ctx, board);
+    return;
+  }
 
-// ---- Initial draw (resolve any accidental starting matches) ----
-renderBoard(ctx, board);
-resolveBoard()
-  .then(() => console.log("[init] resolve complete"))
-  .catch((e) => console.warn("[init] resolve failed:", e))
-  .finally(() => updateHUD());
+  console.log("[handlePick] Attempt swap", { a, b });
 
-// Register SW (only in production, and only if supported)
-if ("serviceWorker" in navigator) {
-  const base = import.meta.env.BASE_URL || "/";
-  const buildId = (import.meta as any).env?.VITE_BUILD_ID || Date.now().toString();
-  // e.g. /rockswap/service-worker.js?v=abcdef1
-  const swUrl = `${base}service-worker.js?v=${encodeURIComponent(buildId)}`;
-  navigator.serviceWorker.register(swUrl).catch((err) => {
-    console.warn("SW register failed:", err);
-  });
+  const swapped = trySwap(board, a.r, a.c, b.r, b.c);
+  if (!swapped) {
+    console.log("[handlePick] Swap rejected (no match).");
+    renderBoard(ctx, board);
+    return;
+  }
+
+  // Swap is valid:
+  moves++;
+  lastSwapDest = { r: b.r, c: b.c };  // <-- moved-to cell for special gem placement
+  updateHUD();
+
+  try {
+    await resolveBoard();
+  } catch (e) {
+    console.warn("[handlePick] resolveBoard failed:", e);
+  }
 }
-
-console.log("[RockSwap] main.ts boot", {
-  BASE_URL: (import.meta as any).env?.BASE_URL,
-  VITE_BUILD_ID: (import.meta as any).env?.VITE_BUILD_ID
-});
