@@ -51,6 +51,7 @@ let isResolving = false; // to prevent input during resolution
 let high = loadHighScore();
 let lastSwapDest: { r: number; c: number } | null = null;
 let gameOver = false;
+let dragStart: { r: number; c: number } | null = null;
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
@@ -149,6 +150,28 @@ function hasAnyValidMove(b: number[][]): boolean {
   return false;
 }
 
+// ---- Core: swap + resolve helper (used by tap and slide) ----
+async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
+  console.log("[input] Attempt swap", { a, b });
+
+  const swapped = trySwap(board, a.r, a.c, b.r, b.c);
+  if (!swapped) {
+    console.log("[input] Swap rejected (no match).");
+    renderBoard(ctx, board, { gameOver });
+    return;
+  }
+
+  moves++;
+  lastSwapDest = { r: b.r, c: b.c }; // the moved-to cell for special gem placement
+  updateHUD();
+
+  try {
+    await resolveBoard();
+  } catch (e) {
+    console.warn("[doSwapAndResolve] resolveBoard failed:", e);
+  }
+}
+
 // ---- Resolve helper: match -> flash -> clear -> collapse -> refill (repeat until stable) ----
 async function resolveBoard() {
   if (isResolving) return;
@@ -207,70 +230,113 @@ async function resolveBoard() {
   }
 }
 
-// ---- Input: tap/click two adjacent cells to attempt a swap ----
-async function handlePick(ev: MouseEvent | PointerEvent | TouchEvent) {
-  console.log("pointerdown fired", { isResolving, firstPick, type: (ev as any).type });
+// ---- Input: tap or slide to attempt a swap ----
 
-  // If we somehow stayed locked, allow a click after watchdog warning
-  if (isResolving) {
-    console.warn("[handlePick] Ignored click: still resolving.");
+// Pointer down: remember where the drag started
+function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
+  if (isResolving || gameOver) {
     return;
   }
 
-  if (gameOver) {
-    console.warn("[handlePick] Ignored click: game is over. Tap Restart.");
-    return;
-  }
-
-  const picked = pickCellAt(board, canvas, ev);
+  const picked = pickCellAt(board, canvas!, ev);
   if (!picked) {
-    console.warn("[handlePick] No cell picked.");
+    console.warn("[handlePointerDown] No cell picked.");
+    dragStart = null;
     return;
   }
 
-  // First click: select a cell
+  dragStart = picked;
+}
+
+// Pointer up: decide if this was a tap or a slide, then act
+async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
+  if (isResolving || gameOver) {
+    return;
+  }
+
+  const endCell = pickCellAt(board, canvas!, ev);
+  if (!endCell) {
+    dragStart = null;
+    return;
+  }
+
+  const start = dragStart ?? endCell;
+  dragStart = null;
+
+  const dr = endCell.r - start.r;
+  const dc = endCell.c - start.c;
+  const manhattan = Math.abs(dr) + Math.abs(dc);
+
+  // -------------------------
+  // Case 1: tap (same cell)
+  // -------------------------
+  if (manhattan === 0) {
+    const cell = endCell;
+
+    // No current selection: select this cell
+    if (!firstPick) {
+      firstPick = cell;
+      renderBoard(ctx, board, { selected: cell, gameOver });
+      return;
+    }
+
+    // We already have a selection
+    const a = firstPick;
+    const b = cell;
+
+    // Tapped same cell again -> deselect
+    if (a.r === b.r && a.c === b.c) {
+      firstPick = null;
+      renderBoard(ctx, board, { gameOver });
+      return;
+    }
+
+    // Tapped a non-adjacent cell -> move the selection
+    const tapDist = Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+    if (tapDist !== 1) {
+      firstPick = b;
+      renderBoard(ctx, board, { selected: b, gameOver });
+      return;
+    }
+
+    // Tapped an adjacent cell -> attempt swap (classic 2-tap behavior)
+    firstPick = null;
+    await doSwapAndResolve(a, b);
+    return;
+  }
+
+  // -------------------------
+  // Case 2: slide to adjacent cell
+  // -------------------------
+  if (manhattan === 1) {
+    // Slide always acts as a direct swap, ignoring firstPick
+    firstPick = null;
+    await doSwapAndResolve(start, endCell);
+    return;
+  }
+
+  // -------------------------
+  // Case 3: slide farther than 1 cell
+  // Treat it like "just tap the end cell"
+  // -------------------------
   if (!firstPick) {
-    firstPick = picked;
-    renderBoard(ctx, board, { selected: picked, gameOver });
-    return;
-  }
-
-  // Second click: attempt a swap
-  const a = firstPick;
-  const b = picked;
-  firstPick = null;
-
-  // If player clicked the same cell twice, just clear selection
-  if (a.r === b.r && a.c === b.c) {
-    renderBoard(ctx, board, { gameOver });
-    return;
-  }
-
-  console.log("[handlePick] Attempt swap", { a, b });
-
-  const swapped = trySwap(board, a.r, a.c, b.r, b.c);
-  if (!swapped) {
-    console.log("[handlePick] Swap rejected (no match).");
-    renderBoard(ctx, board, { gameOver });
-    return;
-  }
-
-  // Swap is valid:
-  moves++;
-  lastSwapDest = { r: b.r, c: b.c }; // the moved-to cell for special gem placement
-  updateHUD();
-
-  try {
-    await resolveBoard();
-  } catch (e) {
-    console.warn("[handlePick] resolveBoard failed:", e);
+    firstPick = endCell;
+    renderBoard(ctx, board, { selected: endCell, gameOver });
+  } else {
+    firstPick = endCell;
+    renderBoard(ctx, board, { selected: endCell, gameOver });
   }
 }
 
 // ---- Wire up events ----
 
 // Prefer pointer events (works for mouse + touch without 300ms delay)
-canvas.addEventListener("pointerdown", handlePick);
+canvas.addEventListener("pointerdown", handlePointerDown);
+canvas.addEventListener("pointerup", handlePointerUp);
 
 document.getElementById("clear-data")?.addEventListener("click", () => {
   clearHighScore();
@@ -286,6 +352,7 @@ document.getElementById("restart-btn")?.addEventListener("click", () => {
   firstPick = null;
   lastSwapDest = null;
   gameOver = false;
+  dragStart = null;
 
   // Redraw and resolve initial matches (if any)
   renderBoard(ctx, board, { gameOver });
