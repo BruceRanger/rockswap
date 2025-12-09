@@ -15,6 +15,7 @@ import { trySwap } from "./core/swap";
 import { clearAndScore, USER_SCORING } from "./core/scoring";
 import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
+import { isPowerGem, isHypercube } from "./core/cell";
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
@@ -105,6 +106,47 @@ function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Pr
   });
 }
 
+// ---- Pulse animation when cashing in a special gem ----
+function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
+  return new Promise((resolve) => {
+    const start = performance.now();
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+
+      // Grow then shrink in one cycle: 0 → 1 → 0
+      const phase = t < 0.5 ? t * 2 : (1 - t) * 2; // 0..1..0
+      const scale = 1 + (maxScale - 1) * phase;
+
+      renderBoard(ctx, board, { gameOver, pulse: scale });
+
+      if (t >= 1) {
+        resolve();
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  });
+}
+
+// ---- Detect if this match "cashes in" any special gem ----
+function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boolean {
+  for (const cell of matches) {
+    const r = cell.r;
+    const c = cell.c;
+    const row = b[r];
+    if (!row) continue;
+    const v = row[c];
+    if (typeof v !== "number" || v < 0) continue;
+    if (isPowerGem(v) || isHypercube(v)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ---- Game-over detection: does ANY swap create a match? ----
 function cloneBoard(b: number[][]): number[][] {
   return b.map((row) => row.slice());
@@ -192,11 +234,17 @@ async function resolveBoard() {
       console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
       if (matches.length === 0) break;
 
+      const specialUsed = usedSpecialGem(board, matches);
+
       await flashMatches(matches, 240);
 
       // base points from clearing (give preferred only on first pass)
       const basePoints = clearAndScore(board, matches, preferred);
       preferred = null; // cascades don't care about the original swap location
+
+      if (specialUsed) {
+        await animatePulse(1.06, 160);
+      }
 
       if (basePoints > 0) {
         score += basePoints * chain;
