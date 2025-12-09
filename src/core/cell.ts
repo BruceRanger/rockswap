@@ -19,7 +19,7 @@ export const enum CellKind {
 
 export interface Cell {
   kind: CellKind;
-  color: number; // base color index 0..N-1
+  color: number; // index 0..N-1 for base color
 }
 
 /** True if this cell contains a rock of any type. */
@@ -29,6 +29,11 @@ export function isRock(cell: Cell): boolean {
     cell.kind === CellKind.StarRock ||
     cell.kind === CellKind.DiamondRock
   );
+}
+
+/** True if this cell contains nothing. */
+export function isEmpty(cell: Cell): boolean {
+  return cell.kind === CellKind.Empty;
 }
 
 /** True only for a normal rock. */
@@ -47,8 +52,8 @@ export function isDiamondRock(cell: Cell): boolean {
 }
 
 /**
- * Returns the rock's base color used for matching.
- * Diamond rocks return null because they can align with any color.
+ * Returns the base color used for matching.
+ * Diamond rocks return null because they align with any color.
  */
 export function baseColor(cell: Cell): number | null {
   if (!isRock(cell)) return null;
