@@ -1,7 +1,7 @@
 // ============================================================
 // File: src/systems/renderer.ts
 // Purpose: Draw the RockSwap board, highlights, selection,
-//          special-gem symbols, and an optional Game Over overlay.
+//          special-gem symbols, optional pulse, and Game Over overlay.
 // ============================================================
 
 import type { Board } from "../core/grid";
@@ -63,6 +63,7 @@ export function renderBoard(
     alpha?: number;
     selected?: CellRC | null;
     gameOver?: boolean;
+    pulse?: number; // 1.0 = normal, >1 = scaled up
   }
 ): void {
   const { rows, cols } = dims(board);
@@ -76,6 +77,16 @@ export function renderBoard(
   const cell = Math.floor(Math.min(W / cols, H / rows));
   const ox = Math.floor((W - cols * cell) / 2);
   const oy = Math.floor((H - rows * cell) / 2);
+
+  const pulse = opts?.pulse ?? 1;
+
+  // Global transform for pulse: scale about canvas center
+  ctx.save();
+  if (pulse !== 1) {
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(pulse, pulse);
+    ctx.translate(-W / 2, -H / 2);
+  }
 
   // ----------------------------
   // Draw gem colors & borders
@@ -188,6 +199,8 @@ export function renderBoard(
 
     ctx.restore();
   }
+
+  ctx.restore(); // undo pulse transform
 }
 
 // ----------------------------
