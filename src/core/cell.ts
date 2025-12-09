@@ -1,29 +1,28 @@
 // ============================================================
 // File: src/core/cell.ts
-// RockSwap core cell definitions
+// RockSwap cell definitions
 // ------------------------------------------------------------
-// Terminology (no Bejeweled words):
-// - Rock:         normal colored rock
-// - Star rock ★:  special rock created by 4-in-a-row
-// - Diamond rock ◎: wild rock that can match any color
+// Terminology:
+// - Rock:          normal colored rock
+// - Star rock ★:   special rock created during play
+// - Diamond rock ◆/◎: wild rock that can match any color
 //
-// The display symbol for the diamond rock may later change
-// from ◎ to a true diamond shape — code name stays the same.
+// All naming avoids terminology from other matching games.
 // ============================================================
 
 export const enum CellKind {
   Empty,
-  Rock,         // formerly Gem
-  StarRock,     // formerly PowerGem
-  DiamondRock,  // formerly Hypercube (wild)
+  Rock,
+  StarRock,
+  DiamondRock,
 }
 
 export interface Cell {
   kind: CellKind;
-  color: number; // index 0..N-1 for base color
+  color: number; // base color index 0..N-1
 }
 
-/** True if it's any kind of rock (normal or special). */
+/** True if this cell contains a rock of any type. */
 export function isRock(cell: Cell): boolean {
   return (
     cell.kind === CellKind.Rock ||
@@ -32,12 +31,31 @@ export function isRock(cell: Cell): boolean {
   );
 }
 
-/** True only for a normal rock (not special). */
+/** True only for a normal rock. */
 export function isNormalRock(cell: Cell): boolean {
   return cell.kind === CellKind.Rock;
 }
 
-/** Is this a star rock (★)? */
+/** True for a star rock (★). */
 export function isStarRock(cell: Cell): boolean {
-  return cell.kind === CellKind.StStarRock; // ❌ wrong
+  return cell.kind === CellKind.StarRock;
+}
+
+/** True for a diamond rock (wild). */
+export function isDiamondRock(cell: Cell): boolean {
+  return cell.kind === CellKind.DiamondRock;
+}
+
+/**
+ * Returns the rock's base color used for matching.
+ * Diamond rocks return null because they can align with any color.
+ */
+export function baseColor(cell: Cell): number | null {
+  if (!isRock(cell)) return null;
+
+  if (isDiamondRock(cell)) {
+    return null; // wild rock
+  }
+
+  return cell.color;
 }
