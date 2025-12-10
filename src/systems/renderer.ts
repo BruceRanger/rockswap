@@ -1,171 +1,244 @@
 // ============================================================
 // File: src/systems/renderer.ts
-// RockSwap board renderer – classic square look
-// ------------------------------------------------------------
-// - Draws a grid of rocks as simple squares.
-// - Shows Star Rocks as ★ and Diamond Rocks as ◆ glyphs.
-// - Supports selection + hover highlights.
-// - Exports renderGame, Board, CellPos for main.ts.
+// Purpose: Draw the RockSwap board, highlights, selection,
+//          special-gem symbols, optional pulse, and Game Over overlay.
 // ============================================================
 
-import {
-  CellKind,
-  isRock,
-  isStarRock,
-  isDiamondRock,
-  isEmpty,
-} from "../core/cell";
-import type { Cell } from "../core/cell";
+import type { Board } from "../core/grid";
+import { baseColor, isPowerGem, isHypercube } from "../core/cell";
+import { ROCK_COLORS } from "../config";
+import type { CellRC } from "../core/match";
 
-// Board + position types exported for main.ts and others
-export type Board = Cell[][];
-export interface CellPos {
-  r: number;
-  c: number;
-}
+// ---------- Helpers ----------
 
-export interface RenderParams {
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
-  board: Board;
-  selected?: CellPos | null;
-  hover?: CellPos | null;
-  swell?: number; // reserved for future animations
-}
-
-// -------- Flat rock colors (no gradients) --------
-
-const ROCK_COLORS: Array<{ r: number; g: number; b: number }> = [
-  { r: 200, g: 50, b: 50 }, // 0
-  { r: 50, g: 150, b: 200 }, // 1
-  { r: 80, g: 180, b: 80 }, // 2
-  { r: 220, g: 190, b: 70 }, // 3
-  { r: 160, g: 100, b: 200 }, // 4
-  { r: 220, g: 120, b: 80 }, // 5
-];
-
-function rockFill(cell: Cell): string {
-  const idx = Math.max(0, Math.min(ROCK_COLORS.length - 1, cell.color));
-  const { r, g, b } = ROCK_COLORS[idx];
-  return `rgb(${r},${g},${b})`;
-}
-
-// -------- Main render entry --------
-
-export function renderGame(params: RenderParams): void {
-  const { canvas, ctx, board } = params;
-
+function dims(board: Board) {
   const rows = board.length;
-  const cols = rows > 0 ? board[0].length : 0;
-  if (!rows || !cols) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    return;
+  const cols = rows > 0 ? (board[0] ? board[0]!.length : 0) : 0;
+  return { rows, cols };
+}
+
+// Choose a color for the gem at (r, c).
+// IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
+// shift the color index.
+function colorFor(board: Board, r: number, c: number): string {
+  const row = board[r];
+  const v = row ? row[c] : undefined;
+  if (typeof v !== "number" || v < 0) {
+    return "#222"; // empty/background
   }
 
-  const swell = params.swell ?? 1.0;
+  const idx = baseColor(v);
+  const raw = ROCK_COLORS[idx];
+  return typeof raw === "string" ? raw : "#888";
+}
 
-  // Compute cell size from canvas dimensions
-  const cellSize = Math.floor(
-    Math.min(canvas.width / cols, canvas.height / rows)
-  );
-  const totalW = cellSize * cols;
-  const totalH = cellSize * rows;
+// Invert an rgba()/rgb() color for star / hypercube glyphs.
+function invertRgba(color: string): string {
+  const nums = color.match(/[\d.]+/g);
+  if (!nums || nums.length < 3) {
+    return "white";
+  }
 
-  // Center the board
-  const offsetX = (canvas.width - totalW) / 2;
-  const offsetY = (canvas.height - totalH) / 2;
+  const r = 255 - Number(nums[0] || 0);
+  const g = 255 - Number(nums[1] || 0);
+  const b = 255 - Number(nums[2] || 0);
+  const a = nums[3] !== undefined ? Number(nums[3]) : 1;
 
+  const rr = Math.min(255, Math.max(0, Math.round(r)));
+  const gg = Math.min(255, Math.max(0, Math.round(g)));
+  const bb = Math.min(255, Math.max(0, Math.round(b)));
+
+  return `rgba(${rr},${gg},${bb},${a})`;
+}
+
+// ============================================================
+// Main board renderer
+// ============================================================
+
+export function renderBoard(
+  ctx: CanvasRenderingContext2D,
+  board: Board,
+  opts?: {
+    highlight?: CellRC[];
+    alpha?: number;
+    selected?: CellRC | null;
+    gameOver?: boolean;
+    pulse?: number; // 1.0 = normal, >1 = scaled up
+  }
+): void {
+  const { rows, cols } = dims(board);
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (rows === 0 || cols === 0) return;
+
+  const cell = Math.floor(Math.min(W / cols, H / rows));
+  const ox = Math.floor((W - cols * cell) / 2);
+  const oy = Math.floor((H - rows * cell) / 2);
+
+  const pulse = opts?.pulse ?? 1;
+
+  // Global transform for pulse: scale about canvas center
   ctx.save();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (pulse !== 1) {
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(pulse, pulse);
+    ctx.translate(-W / 2, -H / 2);
+  }
 
-  // Optional swell transform around canvas center
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  ctx.translate(cx, cy);
-  ctx.scale(swell, swell);
-  ctx.translate(-cx, -cy);
-
-  // Board background
-  ctx.fillStyle = "rgb(20,20,40)";
-  ctx.fillRect(offsetX - 2, offsetY - 2, totalW + 4, totalH + 4);
-
-  // Draw each cell
+  // ----------------------------
+  // Draw gem colors & borders
+  // ----------------------------
   for (let r = 0; r < rows; r++) {
+    const row = board[r];
+    if (!row) continue;
     for (let c = 0; c < cols; c++) {
-      drawCell(ctx, board[r][c], offsetX + c * cellSize, offsetY + r * cellSize, cellSize);
+      const x = ox + c * cell;
+      const y = oy + r * cell;
+
+      const fill = colorFor(board, r, c);
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, cell, cell);
+
+      ctx.strokeStyle = "#111";
+      ctx.strokeRect(x, y, cell, cell);
+
+      // ======================================================
+      // SPECIAL GEM OVERLAY (★ Power Gem, ◎ Hypercube)
+      // ======================================================
+      const v = row[c];
+      if (typeof v === "number" && v >= 0) {
+        const baseIdx = baseColor(v);
+        const baseCol = ROCK_COLORS[baseIdx];
+        const baseStr = typeof baseCol === "string" ? baseCol : "#888";
+        const glyphColor = invertRgba(baseStr);
+
+        ctx.fillStyle = glyphColor;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${Math.floor(cell * 0.6)}px sans-serif`;
+
+        if (isPowerGem(v)) {
+          ctx.fillText("★", x + cell / 2, y + cell / 2);
+        } else if (isHypercube(v)) {
+          ctx.fillText("◎", x + cell / 2, y + cell / 2);
+        }
+      }
+      // ======================================================
     }
   }
 
-  // Selection + hover highlights
-  if (params.selected) {
-    drawHighlight(ctx, params.selected, offsetX, offsetY, cellSize, "rgba(255,255,255,0.6)");
-  }
-  if (params.hover) {
-    drawHighlight(ctx, params.hover, offsetX, offsetY, cellSize, "rgba(255,255,255,0.35)");
+  // ----------------------------
+  // Highlight matched cells
+  // ----------------------------
+  if (opts && opts.highlight && opts.highlight.length > 0) {
+    const alpha = typeof opts.alpha === "number" ? opts.alpha : 1;
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,0,1)";
+
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    for (const cellRC of opts.highlight) {
+      if (!cellRC) continue;
+      const r = cellRC.r;
+      const c = cellRC.c;
+      if (r < 0 || c < 0 || r >= rows || c >= cols) continue;
+
+      const x = ox + c * cell;
+      const y = oy + r * cell;
+      ctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
+    }
+
+    ctx.globalAlpha = prevAlpha;
+    ctx.restore();
   }
 
-  ctx.restore();
+  // ----------------------------
+  // Draw selected outline
+  // ----------------------------
+  if (opts && opts.selected) {
+    const r = opts.selected.r;
+    const c = opts.selected.c;
+    if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && c >= 0 && r < rows && c < cols) {
+      const x = ox + c * cell;
+      const y = oy + r * cell;
+      ctx.save();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.shadowColor = "rgba(255,255,255,0.8)";
+      ctx.shadowBlur = 8;
+      ctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
+      ctx.restore();
+    }
+  }
+
+  // ----------------------------
+  // Game Over overlay (if requested)
+  // ----------------------------
+  if (opts && opts.gameOver) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const titleSize = Math.floor(Math.min(W, H) * 0.12);
+    const msgSize = Math.floor(Math.min(W, H) * 0.06);
+
+    ctx.font = `${titleSize}px sans-serif`;
+    ctx.fillText("NO MOVES – GAME OVER", W / 2, H / 2 - titleSize * 0.3);
+
+    ctx.font = `${msgSize}px sans-serif`;
+    ctx.fillText("Tap Restart to play again", W / 2, H / 2 + msgSize * 0.9);
+
+    ctx.restore();
+  }
+
+  ctx.restore(); // undo pulse transform
 }
 
-// -------- Draw a single cell (square, flat) --------
-
-function drawCell(
-  ctx: CanvasRenderingContext2D,
-  cell: Cell,
-  x: number,
-  y: number,
-  size: number
-): void {
-  // Tile background
-  ctx.fillStyle = "rgb(40,40,60)";
-  ctx.fillRect(x, y, size, size);
-
-  if (isEmpty(cell)) return;
-  if (!isRock(cell)) return;
-
-  // Rock square (inset a bit)
-  const inset = 2;
-  ctx.fillStyle = rockFill(cell);
-  ctx.fillRect(x + inset, y + inset, size - 2 * inset, size - 2 * inset);
-
-  // Overlays for special rocks
-  if (isStarRock(cell)) {
-    drawGlyph(ctx, "★", x, y, size);
-  } else if (isDiamondRock(cell)) {
-    drawGlyph(ctx, "◆", x, y, size);
-  }
+// ----------------------------
+// Convert pointer → board cell
+// ----------------------------
+function getClientXY(ev: MouseEvent | PointerEvent | TouchEvent) {
+  if ("clientX" in ev && "clientY" in ev) return { x: ev.clientX, y: ev.clientY };
+  const te = ev as TouchEvent;
+  const t = te.changedTouches && te.changedTouches[0];
+  return t ? { x: t.clientX, y: t.clientY } : { x: 0, y: 0 };
 }
 
-function drawGlyph(
-  ctx: CanvasRenderingContext2D,
-  glyph: string,
-  x: number,
-  y: number,
-  size: number
-): void {
-  ctx.fillStyle = "white";
-  ctx.font = `${Math.floor(size * 0.6)}px system-ui, -apple-system, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(glyph, x + size / 2, y + size / 2);
-}
+export function pickCellAt(
+  board: number[][],
+  canvas: HTMLCanvasElement,
+  ev: MouseEvent | PointerEvent | TouchEvent
+) {
+  const { rows, cols } = dims(board);
+  if (rows === 0 || cols === 0) return null;
 
-// -------- Highlights --------
+  const rect = canvas.getBoundingClientRect();
+  const { x: cx, y: cy } = getClientXY(ev);
 
-function drawHighlight(
-  ctx: CanvasRenderingContext2D,
-  pos: CellPos,
-  offsetX: number,
-  offsetY: number,
-  cellSize: number,
-  color: string
-): void {
-  const x = offsetX + pos.c * cellSize;
-  const y = offsetY + pos.r * cellSize;
+  // Account for CSS scaling: convert screen pixels to logical canvas coordinates
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (cx - rect.left) * scaleX;
+  const y = (cy - rect.top) * scaleY;
 
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(2, cellSize * 0.06);
-  ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
-  ctx.restore();
+  const W = canvas.width;
+  const H = canvas.height;
+  const cell = Math.floor(Math.min(W / cols, H / rows));
+  const ox = Math.floor((W - cols * cell) / 2);
+  const oy = Math.floor((H - rows * cell) / 2);
+
+  const c = Math.floor((x - ox) / cell);
+  const r = Math.floor((y - oy) / cell);
+
+  if (r >= 0 && r < rows && c >= 0 && c < cols) return { r, c };
+  return null;
 }

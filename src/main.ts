@@ -1,271 +1,415 @@
+console.log("[RockSwap] main.ts loaded");
+
 // ============================================================
 // File: src/main.ts
-// RockSwap main entry
-// ------------------------------------------------------------
-// - Sets up the canvas and HUD.
-// - Creates and manages the board.
-// - Handles input (tap-to-swap).
-// - Resolves matches and cascades.
-// - Updates the score and redraws the board.
+// Purpose: Main game loop + UI wiring for RockSwap
 // ============================================================
 
-import { CellKind, type Cell } from "./core/cell";
-import {
-  ScoreState,
-  createScoreState,
-  beginMoveScoring,
-  applyLineClears,
-} from "./core/scoring";
-import { findMatchesList, type CellRC } from "./core/match";
-import { swapCells, canSwap, areAdjacent } from "./core/swap";
-import { renderGame, type Board, type CellPos } from "./systems/renderer";
-import { createInitialBoard, dropAndRefillBoard } from "./core/grid";
+import packageInfo from "../package.json";
 
-// -------------------- Game state --------------------
+import { createBoard } from "./core/grid";
+import { findMatches } from "./core/match";
+import { collapse } from "./core/collapse";
+import { refill } from "./core/refill";
+import { trySwap } from "./core/swap";
+import { clearAndScore, USER_SCORING } from "./core/scoring";
+import { renderBoard, pickCellAt } from "./systems/renderer";
+import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
+import { isPowerGem, isHypercube } from "./core/cell";
 
-interface GameState {
-  board: Board;
-  score: ScoreState;
-  selected: CellPos | null;
-  hover: CellPos | null;
-  // If we later add animations, a flag can go here.
-}
-
-const state: GameState = {
-  board: [],
-  score: createScoreState(),
-  selected: null,
-  hover: null,
-};
-
-// -------------------- DOM setup --------------------
-
+// Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
 const hud = document.getElementById("hud") as HTMLDivElement | null;
+const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
-if (!canvas || !hud) {
-  throw new Error("Missing board canvas or HUD element in index.html.");
+if (versionEl) {
+  const updated = new Date(document.lastModified).toISOString(); // full ISO date+time
+  versionEl.textContent = ` • Version: ${packageInfo.version} • Updated: ${updated}`;
+}
+
+if (!canvas || !hud || !versionEl) {
+  throw new Error(
+    "Missing required DOM elements. Ensure canvas, hud, and version exist in index.html."
+  );
 }
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
-  throw new Error("Could not get 2D context from canvas.");
+  throw new Error("2D canvas context not available");
 }
 
-// Resize canvas to match CSS size and device pixel ratio.
-function resizeCanvas(): void {
-  const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+// Make sure canvas actually receives pointer events (helps on mobile)
+canvas.style.touchAction = "none";
+canvas.style.pointerEvents = "auto";
+canvas.tabIndex = 0;
+
+// ---- Game state ----
+let board = createBoard(); // size NxN filled with random cell types
+let score = 0;
+let moves = 0;
+let firstPick: { r: number; c: number } | null = null;
+let isResolving = false; // to prevent input during resolution
+let high = loadHighScore();
+let lastSwapDest: { r: number; c: number } | null = null;
+let gameOver = false;
+let dragStart: { r: number; c: number } | null = null;
+
+// ---- Scoring summary (display only) ----
+function scoringSummary(): string {
+  const per = USER_SCORING?.perCell ?? 10;
+
+  const exact = USER_SCORING?.bonuses?.exact || {};
+  const atLeast = USER_SCORING?.bonuses?.atLeast || {};
+
+  const exactKeys = Object.keys(exact).sort((a, b) => Number(a) - Number(b));
+  const atLeastKeys = Object.keys(atLeast).sort((a, b) => Number(a) - Number(b));
+
+  const exactText =
+    exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k]} pts`).join(", ") : "none";
+
+  const atLeastText =
+    atLeastKeys.length > 0
+      ? atLeastKeys.map((k) => `${k}+ cells: +${atLeast[k]} pts`).join(" | ")
+      : "none";
+
+  return "Scoring: " + per + " pts/cell; bonus " + exactText + ".";
 }
 
-window.addEventListener("resize", () => {
-  resizeCanvas();
-  drawFrame();
-});
-
-// -------------------- Board + score helpers --------------------
-
-function startNewGame(): void {
-  state.board = createInitialBoard();
-  state.score = createScoreState();
-  state.selected = null;
-  state.hover = null;
-  updateHud();
-  drawFrame();
+// ---- HUD helper ----
+function updateHUD() {
+  hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
+  hud.title = scoringSummary();
 }
 
-/**
- * Convert pointer coordinates to board row/column, if any.
- */
-function hitTestBoard(clientX: number, clientY: number): CellPos | null {
-  const { board } = state;
-  const rows = board.length;
-  const cols = rows > 0 ? board[0].length : 0;
-  if (rows === 0 || cols === 0) return null;
+// ---- Small async helpers ----
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
 
-  const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
+function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Promise<void> {
+  return new Promise((resolve) => {
+    const start = performance.now();
 
-  const x = (clientX - rect.left) * dpr;
-  const y = (clientY - rect.top) * dpr;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // Pulsing alpha from 0.4 to 1.0
+      const alpha = 0.4 + 0.6 * Math.sin(t * Math.PI * 3);
+      renderBoard(ctx, board, { highlight: matches, alpha, gameOver });
+      if (t >= 1) {
+        resolve();
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
 
-  // Layout must match renderer.ts
-  const cellSize = Math.floor(
-    Math.min(canvas.width / cols, canvas.height / rows)
-  );
-  const boardWidth = cellSize * cols;
-  const boardHeight = cellSize * rows;
-  const offsetX = (canvas.width - boardWidth) / 2;
-  const offsetY = (canvas.height - boardHeight) / 2;
+    requestAnimationFrame(step);
+  });
+}
 
-  if (
-    x < offsetX ||
-    y < offsetY ||
-    x >= offsetX + boardWidth ||
-    y >= offsetY + boardHeight
-  ) {
-    return null;
+// ---- Pulse animation when cashing in a special gem ----
+function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
+  return new Promise((resolve) => {
+    const start = performance.now();
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+
+      // Grow then shrink in one cycle: 0 → 1 → 0
+      const phase = t < 0.5 ? t * 2 : (1 - t) * 2; // 0..1..0
+      const scale = 1 + (maxScale - 1) * phase;
+
+      renderBoard(ctx, board, { gameOver, pulse: scale });
+
+      if (t >= 1) {
+        resolve();
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  });
+}
+
+// ---- Detect if this match "cashes in" any special gem ----
+function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boolean {
+  for (const cell of matches) {
+    const r = cell.r;
+    const c = cell.c;
+    const row = b[r];
+    if (!row) continue;
+    const v = row[c];
+    if (typeof v !== "number" || v < 0) continue;
+    if (isPowerGem(v) || isHypercube(v)) {
+      return true;
+    }
   }
-
-  const c = Math.floor((x - offsetX) / cellSize);
-  const r = Math.floor((y - offsetY) / cellSize);
-
-  if (r < 0 || c < 0 || r >= rows || c >= cols) {
-    return null;
-  }
-
-  return { r, c };
+  return false;
 }
 
-// -------------------- Match resolution + scoring --------------------
+// ---- Game-over detection: does ANY swap create a match? ----
+function cloneBoard(b: number[][]): number[][] {
+  return b.map((row) => row.slice());
+}
 
-/**
- * Remove matched cells, drop rocks down, refill, and score.
- * This function runs all cascades for a single move.
- */
-function resolveBoardAfterMove(): void {
-  const { board, score } = state;
+function hasAnyValidMove(b: number[][]): boolean {
+  const rows = b.length;
+  const cols = rows > 0 ? (b[0] ? b[0]!.length : 0) : 0;
 
-  // Start a new chain for scoring.
-  beginMoveScoring(score);
+  for (let r = 0; r < rows; r++) {
+    const row = b[r];
+    if (!row) continue;
 
-  let chainHasMatches = false;
-  let chainIndex = 0;
+    for (let c = 0; c < cols; c++) {
+      const v = row[c];
+      if (typeof v !== "number" || v < 0) continue;
 
-  while (true) {
-    const matches: CellRC[] = findMatchesList(board);
-    if (matches.length === 0) break;
+      // Only need to test right and down neighbors to cover all pairs
+      const dirs = [
+        [0, 1],
+        [1, 0]
+      ] as const;
 
-    chainHasMatches = true;
-    chainIndex += 1;
+      for (const [dr, dc] of dirs) {
+        const r2 = r + dr;
+        const c2 = c + dc;
+        if (r2 >= rows || c2 >= cols) continue;
 
-    // Very simple scoring: treat all cleared cells as one combined line.
-    // This preserves the feel of "more cleared = more points" while
-    // keeping main.ts independent of run grouping details.
-    const runLengths = [matches.length];
+        const v2 = b[r2]?.[c2];
+        if (typeof v2 !== "number" || v2 < 0) continue;
 
-    const stepPoints = applyLineClears(score, runLengths);
-    // chainIndex is also tracked inside score, but if we want, we
-    // could log or display it here.
-
-    // Clear matched cells.
-    for (const { r, c } of matches) {
-      const cell = board[r][c];
-      // Only clear if it really contains a rock.
-      if (cell.kind !== CellKind.Empty) {
-        board[r][c] = { kind: CellKind.Empty, color: cell.color };
+        // Work on a copy so we don't disturb the real board
+        const copy = cloneBoard(b);
+        if (trySwap(copy as any, r, c, r2, c2)) {
+          // This swap would create a match → there is still a legal move
+          return true;
+        }
       }
     }
-
-    // Drop and refill to close gaps.
-    dropAndRefillBoard(board);
   }
 
-  if (chainHasMatches) {
-    updateHud();
-  }
+  // No tested swap created a match → no moves left
+  return false;
 }
 
-// -------------------- Input handling --------------------
+// ---- Core: swap + resolve helper (used by tap and slide) ----
+async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
+  console.log("[input] Attempt swap", { a, b });
 
-function handlePointerDown(ev: PointerEvent): void {
-  const pos = hitTestBoard(ev.clientX, ev.clientY);
-  if (!pos) {
-    state.selected = null;
-    state.hover = null;
-    drawFrame();
+  const swapped = trySwap(board, a.r, a.c, b.r, b.c);
+  if (!swapped) {
+    console.log("[input] Swap rejected (no match).");
+    renderBoard(ctx, board, { gameOver });
     return;
   }
 
-  if (!state.selected) {
-    // First tap: select this rock.
-    state.selected = pos;
-    state.hover = null;
-    drawFrame();
+  moves++;
+  lastSwapDest = { r: b.r, c: b.c }; // the moved-to cell for special gem placement
+  updateHUD();
+
+  try {
+    await resolveBoard();
+  } catch (e) {
+    console.warn("[doSwapAndResolve] resolveBoard failed:", e);
+  }
+}
+
+// ---- Resolve helper: match -> flash -> clear -> collapse -> refill (repeat until stable) ----
+async function resolveBoard() {
+  if (isResolving) return;
+  isResolving = true;
+
+  let chain = 1; // increases for each cascade pass
+  let preferred = lastSwapDest;
+  lastSwapDest = null;
+
+  try {
+    let pass = 0;
+    const maxPasses = 80;
+
+    while (pass < maxPasses) {
+      pass++;
+
+      const matches = findMatches(board); // returns CellRC[]
+      console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
+      if (matches.length === 0) break;
+
+      const specialUsed = usedSpecialGem(board, matches);
+
+      await flashMatches(matches, 240);
+
+      // base points from clearing (give preferred only on first pass)
+      const basePoints = clearAndScore(board, matches, preferred);
+      preferred = null; // cascades don't care about the original swap location
+
+      if (specialUsed) {
+        await animatePulse(1.06, 160);
+      }
+
+      if (basePoints > 0) {
+        score += basePoints * chain;
+        if (score > high) {
+          high = maybeUpdateHighScore(score);
+        }
+      }
+
+      collapse(board);
+      refill(board);
+
+      renderBoard(ctx, board, { gameOver });
+
+      chain++;
+      await delay(40); // small pause for cascades
+    }
+  } catch (e) {
+    console.warn("[resolveBoard] error:", e);
+  } finally {
+    isResolving = false;
+
+    // Determine game-over state
+    gameOver = !hasAnyValidMove(board);
+
+    updateHUD();
+    renderBoard(ctx, board, { gameOver });
+
+    if (gameOver) {
+      hud.textContent += " | No moves – Game Over";
+    }
+  }
+}
+
+// ---- Input: tap or slide to attempt a swap ----
+
+// Pointer down: remember where the drag started
+function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
+  if (isResolving || gameOver) {
     return;
   }
 
-  // Second tap: attempt a swap if adjacent.
-  const from = state.selected;
-  const to = pos;
-
-  if (!areAdjacent(from.r, from.c, to.r, to.c)) {
-    // Not adjacent: just move selection.
-    state.selected = pos;
-    state.hover = null;
-    drawFrame();
+  const picked = pickCellAt(board, canvas!, ev);
+  if (!picked) {
+    console.warn("[handlePointerDown] No cell picked.");
+    dragStart = null;
     return;
   }
 
-  if (!canSwap(state.board, from.r, from.c, to.r, to.c)) {
-    // Swap not allowed.
-    state.selected = null;
-    state.hover = null;
-    drawFrame();
+  dragStart = picked;
+}
+
+// Pointer up: decide if this was a tap or a slide, then act
+async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
+  if (isResolving || gameOver) {
     return;
   }
 
-  // Perform the swap.
-  swapCells(state.board, from.r, from.c, to.r, to.c);
+  const endCell = pickCellAt(board, canvas!, ev);
+  if (!endCell) {
+    dragStart = null;
+    return;
+  }
 
-  // Resolve matches and cascades.
-  resolveBoardAfterMove();
+  const start = dragStart ?? endCell;
+  dragStart = null;
 
-  // Clear selection after a completed move.
-  state.selected = null;
-  state.hover = null;
-  drawFrame();
+  const dr = endCell.r - start.r;
+  const dc = endCell.c - start.c;
+  const manhattan = Math.abs(dr) + Math.abs(dc);
+
+  // -------------------------
+  // Case 1: tap (same cell)
+  // -------------------------
+  if (manhattan === 0) {
+    const cell = endCell;
+
+    // No current selection: select this cell
+    if (!firstPick) {
+      firstPick = cell;
+      renderBoard(ctx, board, { selected: cell, gameOver });
+      return;
+    }
+
+    // We already have a selection
+    const a = firstPick;
+    const b = cell;
+
+    // Tapped same cell again -> deselect
+    if (a.r === b.r && a.c === b.c) {
+      firstPick = null;
+      renderBoard(ctx, board, { gameOver });
+      return;
+    }
+
+    // Tapped a non-adjacent cell -> move the selection
+    const tapDist = Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+    if (tapDist !== 1) {
+      firstPick = b;
+      renderBoard(ctx, board, { selected: b, gameOver });
+      return;
+    }
+
+    // Tapped an adjacent cell -> attempt swap (classic 2-tap behavior)
+    firstPick = null;
+    await doSwapAndResolve(a, b);
+    return;
+  }
+
+  // -------------------------
+  // Case 2: slide to adjacent cell
+  // -------------------------
+  if (manhattan === 1) {
+    // Slide always acts as a direct swap, ignoring firstPick
+    firstPick = null;
+    await doSwapAndResolve(start, endCell);
+    return;
+  }
+
+  // -------------------------
+  // Case 3: slide farther than 1 cell
+  // Treat it like "just tap the end cell"
+  // -------------------------
+  if (!firstPick) {
+    firstPick = endCell;
+    renderBoard(ctx, board, { selected: endCell, gameOver });
+  } else {
+    firstPick = endCell;
+    renderBoard(ctx, board, { selected: endCell, gameOver });
+  }
 }
 
-function handlePointerMove(ev: PointerEvent): void {
-  const pos = hitTestBoard(ev.clientX, ev.clientY);
-  state.hover = pos;
-  drawFrame();
-}
+// ---- Wire up events ----
 
-function handlePointerLeave(): void {
-  state.hover = null;
-  drawFrame();
-}
+// Prefer pointer events (works for mouse + touch without 300ms delay)
+canvas.addEventListener("pointerdown", handlePointerDown);
+canvas.addEventListener("pointerup", handlePointerUp);
 
-// -------------------- HUD + render loop --------------------
+document.getElementById("clear-data")?.addEventListener("click", () => {
+  clearHighScore();
+  high = 0;
+  updateHUD();
+});
 
-function updateHud(): void {
-  hud.textContent = `Score: ${state.score.total}`;
-}
+document.getElementById("restart-btn")?.addEventListener("click", () => {
+  // Reset game state
+  board = createBoard();
+  score = 0;
+  moves = 0;
+  firstPick = null;
+  lastSwapDest = null;
+  gameOver = false;
+  dragStart = null;
 
-function drawFrame(): void {
-  renderGame({
-    canvas,
-    ctx,
-    board: state.board,
-    selected: state.selected,
-    hover: state.hover,
-    swell: 1.0,
-  });
-}
+  // Redraw and resolve initial matches (if any)
+  renderBoard(ctx, board, { gameOver });
+  resolveBoard()
+    .then(() => console.log("[restart] resolve complete"))
+    .catch((e) => console.warn("[restart] resolve failed:", e))
+    .finally(() => updateHUD());
+});
 
-// -------------------- Boot --------------------
-
-function boot(): void {
-  resizeCanvas();
-
-  // Set up input listeners.
-  canvas.addEventListener("pointerdown", handlePointerDown);
-  canvas.addEventListener("pointermove", handlePointerMove);
-  canvas.addEventListener("pointerleave", handlePointerLeave);
-  canvas.addEventListener("pointercancel", handlePointerLeave);
-  canvas.addEventListener("pointerup", () => {
-    // For now, pointer up does not change behavior separately.
-  });
-
-  startNewGame();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
-} else {
-  boot();
-}
+// ---- Initial draw ----
+renderBoard(ctx, board, { gameOver });
+updateHUD();

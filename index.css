@@ -1,37 +1,227 @@
-/* Page background + text */
+/* ---------- index.css: Base layout and colors ----------
+   This CSS file controls overall layout, colors, and fonts.
+   Adjust colors and font-family as you like.
+   Avoid changing dimensions unless you know and test the layout effect.
+   NOTE: The game grid (canvas) background is PAINTED IN CODE, not by CSS.
+         To change canvas background color, edit the fill color
+         (look for ctx.fillStyle)
+         in:
+           - src/systems/renderer.ts  (main game canvas)
+           - src/ui/hud.ts            (Next preview canvas)
+*/
+
+/* ---------- Assign Some Color variables (tweak these) ---------- */
+:root {
+  --page-bg: #505050; /* page background */
+  --page-text: #eeeeee; /* default text color */
+
+  --canvas-bg: #111111; /* used by JS fills in renderer/hud */
+  --canvas-border: #888888;
+
+  --grid-stroke: rgba(255, 255, 255, 0.06);
+
+  --panel-border: #333333;
+  --panel-bg: #6c6c6c; /* panel and footer background */
+
+  --accent: #dffdff; /* accent color (links, highlights) */
+
+  --footer-height: 36px; /* keep in sync with footer real height */
+}
+
+/* ---------- Base web page ---------- */
+
+html,
 body {
-  margin: 0;
-  background: #505050;
-  color: #eeeeee;
-  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0; /* keep 0 for full-screen canvas */
+  background: var(--page-bg); /* page background color (safe to adjust) */
+  color: var(--page-text); /* default text color (safe to adjust for contrast) */
+  height: 100%;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Arial,
+    sans-serif;
+}
+
+/* Reserve space so the fixed footer doesn't cover content */
+body,
+main,
+.wrap {
+  padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom));
+}
+
+/* no page scrollbars by default */
+body {
   overflow: hidden;
 }
 
-/* HUD text */
-#hud, .small {
+/* Let MAIN be the scroll container only if needed. Use dynamic vh to avoid iOS bars. */
+main {
+  height: calc(100dvh - var(--footer-height) - env(safe-area-inset-bottom));
+  overflow: auto; /* scroll only when content exceeds available height */
+}
+
+/* ---------- Main game area layout ----------
+  Avoid changing display or centering styles.
+  You can adjust gap (space between game and side panel).
+    */
+.wrap {
+  display: grid;
+  grid-template-rows: min-content max-content min-content; /* HUD, canvas, instructions */
+  align-content: center; /* pack rows together vertically */
+  justify-items: center; /* center horizontally */
+  gap: 24px;
+  min-height: 100vh; /* avoid hard 100vh + overlap; allow padding-bottom to matter */
+}
+
+/* ---------- Game board ----------
+   This is the main play area canvas.
+   Do not change width/height here - controlled by HTML attributes.
+   NOTE: The canvas background color is filled in JS.
+   Changing background here won't show unless you remove
+   the JS fill in src/systems/renderer.ts.
+*/
+
+canvas {
+  background: #444444; /* purely decorative since JS paints */
+  border: 1px solid var(--canvas-border); /* change game area border size, type, and color */
+  touch-action: none; /* help pointer events on mobile */
+  pointer-events: auto;
+  z-index: 5;
+}
+
+/* ---------- Small text (controls)----------
+  Used for control instructions.
+  You can change font-size or opacity for readability.
+  */
+
+.small {
+  font-size: 14px;
+  opacity: 0.9;
   text-align: center;
-  font-size: 16px;
-  margin-bottom: 10px;
+  z-index: 2;
 }
 
-/* Main RockSwap board size — responsive and safe */
-#board {
-  display: block;
-  margin: 20px auto;
-
-  /* Square board that fits phone/tablet/desktop */
-  width: min(92vw, 420px);
-  height: min(92vw, 420px);
-
-  border: 1px solid #aaa;
-  background: #444; /* purely decorative; renderer paints over it */
+/* ---------- Shared small button styling ---------- */
+button.small {
+  appearance: none;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--accent);
+  padding: 8px 14px;
+  min-height: 44px;
+  min-width: 88px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-/* Small devices (iPhone SE) */
-@media (max-width: 400px) {
-  #board {
-    width: 90vw;
-    height: 90vw; /* stays square */
+/* Hover/focus: subtle filled look, strong focus outline */
+button.small:hover {
+  background: #333333;
+}
+
+button.small:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+/* keep a little breathing room around buttons */
+#restart-btn,
+#clear-data {
+  margin: 6px 0;
+}
+
+/* optional: make New Game a mild accent color fill */
+#restart-btn {
+  background: var(--panel-bg);
+  border-color: var(--panel-border);
+}
+
+#restart-btn:hover {
+  background: #333333;
+}
+
+/* Clear High Score stays outline-only for hierarchy */
+#clear-data {
+  background: transparent;
+}
+
+/* Active: tiny nudge without animation (no CLS, no perf hit) */
+button.small:active {
+  transform: translateY(1px);
+}
+
+/* Disabled case (future-proof) */
+button.small:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Footer ---------- */
+footer {
+  text-align: center;
+  font-size: 14px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--panel-bg);
+  color: var(--page-text);
+  border-top: 1px solid var(--panel-border);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--footer-height);
+  width: 100%;
+  z-index: 3;
+}
+
+footer a {
+  margin: 0 4px;
+  color: var(--accent);
+  text-decoration: underline; /* underline by default */
+  font-weight: 600; /* mild weight cue */
+}
+
+footer a:hover {
+  text-decoration-thickness: 2px; /* stronger on hover/focus */
+}
+
+footer a:focus-visible {
+  outline: 2px solid #ffffff; /* accessible focus ring */
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #clear-data {
+    transition: none;
   }
 }
 
+/* on narrow devices, e.g.
+an IPhone SE only 375 pixels wide
+shrink the canvas to fit.
+*/
+@media (max-width: 400px) {
+  canvas {
+    width: 90vw;
+    height: auto;
+  }
+}
+/* on short devices (height < 700px)
+shrink spacing to fit.
+*/
+@media (max-height: 700px) {
+  .wrap {
+    gap: 6px;
+  }
+  #hud {
+    font-size: 14px;
+  }
+  .small {
+    font-size: 13px;
+  }
+}

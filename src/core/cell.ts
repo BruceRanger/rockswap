@@ -1,66 +1,45 @@
 // ============================================================
 // File: src/core/cell.ts
-// RockSwap cell definitions
-// ------------------------------------------------------------
-// Terminology:
-// - Rock:          normal colored rock
-// - Star rock ★:   special rock created during play
-// - Diamond rock ◆: wild rock that can match any color
+// Purpose: Bit-flags and helpers for special gem types
+//          (power gem, hypercube, etc.).
+// ============================================================
 //
-// All naming avoids terminology from other matching games.
+// Base gem values are 0..(KINDS-1).
+// We encode special gems by adding bit flags above the color index.
+//
+// Example:
+//    value = color | FLAG_POWER
+//    value = color | FLAG_HYPERCUBE
+//
+// The renderer can check these flags to draw differently.
+// The board logic can check these flags to apply special effects.
+//
 // ============================================================
 
-export const enum CellKind {
-  Empty,
-  Rock,
-  StarRock,
-  DiamondRock,
+// --- Flag bits ------------------------------------------------
+
+export const FLAG_POWER = 1 << 8;      // 256
+export const FLAG_HYPERCUBE = 1 << 9;  // 512
+
+// Mask for the base gem color (low byte only).
+export const COLOR_MASK = 0xff;
+
+// Return just the underlying base color (0..KINDS-1), hiding flags.
+// match.ts imports this as `baseColor` and aliases it to getBaseColor.
+export function baseColor(value: number): number {
+  return value & COLOR_MASK;
 }
 
-export interface Cell {
-  kind: CellKind;
-  color: number; // index 0..N-1 for base color
+// An "empty" cell uses a negative value (e.g., -1).
+export function isEmpty(value: number): boolean {
+  return value < 0;
 }
 
-/** True if this cell contains a rock of any type. */
-export function isRock(cell: Cell): boolean {
-  return (
-    cell.kind === CellKind.Rock ||
-    cell.kind === CellKind.StarRock ||
-    cell.kind === CellKind.DiamondRock
-  );
+// Convenience helpers for game logic / renderer.
+export function isPowerGem(value: number): boolean {
+  return (value & FLAG_POWER) !== 0;
 }
 
-/** True if this cell contains nothing. */
-export function isEmpty(cell: Cell): boolean {
-  return cell.kind === CellKind.Empty;
-}
-
-/** True only for a normal rock. */
-export function isNormalRock(cell: Cell): boolean {
-  return cell.kind === CellKind.Rock;
-}
-
-/** True for a star rock (★). */
-export function isStarRock(cell: Cell): boolean {
-  return cell.kind === CellKind.StarRock;
-}
-
-/** True for a diamond rock (wild). */
-export function isDiamondRock(cell: Cell): boolean {
-  return cell.kind === CellKind.DiamondRock;
-}
-
-/**
- * Returns the base color used for matching.
- * Diamond rocks return null because they align with any color.
- */
-export function baseColor(cell: Cell): number | null {
-  if (!isRock(cell)) return null;
-
-  if (isDiamondRock(cell)) {
-    return null; // wild rock
-  }
-
-  return cell.color;
+export function isHypercube(value: number): boolean {
+  return (value & FLAG_HYPERCUBE) !== 0;
 }

@@ -1,149 +1,358 @@
 // ============================================================
 // File: src/core/scoring.ts
-// RockSwap scoring helpers
-// ------------------------------------------------------------
-// Scoring rules:
-//
-// - Base value per cleared rock: 10 points.
-// - A straight line of 3 rocks:
-//     3 * 10 = 30 points.
-// - A straight line of 4 rocks:
-//     4 * 10 + 40 bonus = 80 points
-//     (and should create a star rock elsewhere in the logic).
-// - A straight line of 5 or more rocks:
-//     length * 10 + 50 bonus
-//     (and should create a diamond rock elsewhere in the logic).
-//
-// Cascades:
-// - Each time rocks are cleared during a single move, the
-//   "chain index" increases (1 for first clear, 2 for second, etc.).
-// - The points for that clear are multiplied by the chain index.
-//
-// Special rock activations:
-// - Star rock activation: extra flat bonus per activation.
-// - Diamond rock activation: larger flat bonus per activation.
-//   (Plus the normal per-rock base value for the cleared rocks).
-//
-// This file does not modify the board. It only calculates and
-// accumulates scores based on counts that other modules provide.
+// Purpose:
+//   - Classic-style Bejeweled 2 scoring & special gems.
+//   - Clear matched cells using mask logic.
+//   - Create Power Gems (4-in-a-row only) and Hypercubes (5-in-a-row).
+//   - Ensure newly created specials do NOT explode immediately.
+//   - Expand clears for existing Power Gems / Hypercubes.
+//   - Return base points earned for this pass.
 // ============================================================
 
-/**
- * Global scoring state for a game.
- * - total: accumulated points.
- * - chainIndex: 0 when idle, 1+ while resolving a move with cascades.
- */
-export interface ScoreState {
-  total: number;
-  chainIndex: number;
+import type { Board } from "./grid";
+import type { CellRC } from "./match";
+import {
+  baseColor as getBaseColor,
+  isPowerGem,
+  isHypercube,
+  FLAG_POWER,
+  FLAG_HYPERCUBE
+} from "./cell";
+
+const DEBUG_SPECIALS = true;
+
+// ------------------------------------------------------------
+// User-visible scoring config (for HUD summary)
+// ------------------------------------------------------------
+
+export const USER_SCORING = {
+  perCell: 10,
+  bonuses: {
+    exact: { 4: 0, 5: 0 },
+    atLeast: {}
+  }
+};
+
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
+
+function dims(board: Board) {
+  const rows = board.length;
+  const cols = rows > 0 ? (board[0] ? board[0]!.length : 0) : 0;
+  return { rows, cols };
 }
 
-/**
- * Create a fresh score state.
- */
-export function createScoreState(): ScoreState {
-  return {
-    total: 0,
-    chainIndex: 0,
-  };
+function makeMask(rows: number, cols: number): boolean[][] {
+  const out: boolean[][] = new Array(rows);
+  for (let r = 0; r < rows; r++) out[r] = new Array(cols).fill(false);
+  return out;
 }
 
-/**
- * Call this when a new player move starts (before any clears).
- */
-export function beginMoveScoring(state: ScoreState): void {
-  state.chainIndex = 0;
+function inBounds(board: Board, r: number, c: number): boolean {
+  const { rows, cols } = dims(board);
+  return r >= 0 && r < rows && c >= 0 && c < cols;
 }
 
-/**
- * Call this each time a set of straight-line runs is cleared
- * during the resolution of a single move.
- *
- * Parameters:
- * - state: global score state
- * - runLengths: array of line lengths cleared in this step (e.g. [3,4,5])
- *
- * Returns:
- * - points added to state.total for this step (after cascade multiplier)
- */
-export function applyLineClears(
-  state: ScoreState,
-  runLengths: readonly number[]
+function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
+  const { rows, cols } = dims(board);
+  const mask = makeMask(rows, cols);
+  for (const cell of matches) {
+    if (inBounds(board, cell.r, cell.c)) mask[cell.r]![cell.c] = true;
+  }
+  return mask;
+}
+
+// ------------------------------------------------------------
+// Run detection (3/4/5 runs for power & hypercube)
+// ------------------------------------------------------------
+
+type Run = {
+  kind: "H" | "V";
+  color: number;
+  row: number;
+  col: number;
+  start: number;
+  len: number;
+};
+
+function findAllRuns(board: Board): Run[] {
+  const { rows, cols } = dims(board);
+  const runs: Run[] = [];
+
+  // Horizontal
+  for (let r = 0; r < rows; r++) {
+    let c = 0;
+    while (c < cols) {
+      const v = board[r]?.[c];
+      if (typeof v !== "number" || v < 0) {
+        c++;
+        continue;
+      }
+      const color = getBaseColor(v);
+      let start = c;
+      c++;
+      while (c < cols && typeof board[r]?.[c] === "number" &&
+             getBaseColor(board[r]![c]!) === color) {
+        c++;
+      }
+      const len = c - start;
+      if (len >= 3)
+        runs.push({ kind: "H", color, row: r, col: -1, start, len });
+    }
+  }
+
+  // Vertical
+  for (let c = 0; c < cols; c++) {
+    let r = 0;
+    while (r < rows) {
+      const v = board[r]?.[c];
+      if (typeof v !== "number" || v < 0) {
+        r++;
+        continue;
+      }
+      const color = getBaseColor(v);
+      let start = r;
+      r++;
+      while (r < rows && typeof board[r]?.[c] === "number" &&
+             getBaseColor(board[r]![c]!) === color) {
+        r++;
+      }
+      const len = r - start;
+      if (len >= 3)
+        runs.push({ kind: "V", color, row: -1, col: c, start, len });
+    }
+  }
+
+  return runs;
+}
+
+// ------------------------------------------------------------
+// Special-gem selection
+// Uses optional `preferred` cell to override where to place the gem.
+// ------------------------------------------------------------
+
+type SpecialGem = { r: number; c: number; type: "power" | "hypercube" };
+
+function pickSpecialGem(
+  board: Board,
+  mask: boolean[][],
+  preferred: CellRC | null
+): SpecialGem | null {
+  const runs = findAllRuns(board);
+
+  if (runs.length === 0) return null;
+
+  // Helper
+  const isMatched = (r: number, c: number) =>
+    inBounds(board, r, c) && mask[r]![c] === true;
+
+  // If player moved a gem into place, we will prefer that cell
+  // *AS LONG AS it is part of a suitable run*.
+
+  // ------------------------------
+  // 1) Hypercube = 5+ run
+  // ------------------------------
+  for (const run of runs) {
+    if (run.len >= 5) {
+      let r, c;
+
+      if (preferred) {
+        if (run.kind === "H" &&
+            preferred.r === run.row &&
+            preferred.c >= run.start &&
+            preferred.c < run.start + run.len &&
+            isMatched(preferred.r, preferred.c)) {
+          r = preferred.r;
+          c = preferred.c;
+        } else if (run.kind === "V" &&
+                   preferred.c === run.col &&
+                   preferred.r >= run.start &&
+                   preferred.r < run.start + run.len &&
+                   isMatched(preferred.r, preferred.c)) {
+          r = preferred.r;
+          c = preferred.c;
+        } else {
+          // fallback: center of run
+          if (run.kind === "H") {
+            r = run.row;
+            c = run.start + Math.floor((run.len - 1) / 2);
+          } else {
+            c = run.col;
+            r = run.start + Math.floor((run.len - 1) / 2);
+          }
+        }
+      } else {
+        // no preferred at all → center of run
+        if (run.kind === "H") {
+          r = run.row;
+          c = run.start + Math.floor((run.len - 1) / 2);
+        } else {
+          c = run.col;
+          r = run.start + Math.floor((run.len - 1) / 2);
+        }
+      }
+
+      if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) console.log("SPECIAL: HYPERCUBE @", { r, c });
+        return { r, c, type: "hypercube" };
+      }
+    }
+  }
+
+  // -----------------------------------
+  // 2) Power Gem = 4-in-a-row (ONLY)
+  // -----------------------------------
+  for (const run of runs) {
+    if (run.len === 4) {
+      let r, c;
+
+      if (preferred) {
+        if (run.kind === "H" &&
+            preferred.r === run.row &&
+            preferred.c >= run.start &&
+            preferred.c < run.start + run.len &&
+            isMatched(preferred.r, preferred.c)) {
+          r = preferred.r;
+          c = preferred.c;
+        } else if (run.kind === "V" &&
+                   preferred.c === run.col &&
+                   preferred.r >= run.start &&
+                   preferred.r < run.start + run.len &&
+                   isMatched(preferred.r, preferred.c)) {
+          r = preferred.r;
+          c = preferred.c;
+        } else {
+          // fall back: run.start + 1
+          if (run.kind === "H") {
+            r = run.row;
+            c = run.start + 1;
+          } else {
+            c = run.col;
+            r = run.start + 1;
+          }
+        }
+      } else {
+        // no preferred → run.start + 1
+        if (run.kind === "H") {
+          r = run.row;
+          c = run.start + 1;
+        } else {
+          c = run.col;
+          r = run.start + 1;
+        }
+      }
+
+      if (isMatched(r, c)) {
+        if (DEBUG_SPECIALS) console.log("SPECIAL: POWER @", { r, c });
+        return { r, c, type: "power" };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ------------------------------------------------------------
+// Apply special (write it to board)
+// ------------------------------------------------------------
+
+function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialGem | null) {
+  if (!special) return;
+
+  const { r, c, type } = special;
+  if (!inBounds(board, r, c)) return;
+
+  const v = board[r]![c];
+  if (typeof v !== "number" || v < 0) return;
+
+  const color = getBaseColor(v);
+  mask[r]![c] = false; // prevent immediate clearing
+
+  board[r]![c] =
+    type === "power" ? (color | FLAG_POWER) : (color | FLAG_HYPERCUBE);
+}
+
+// ------------------------------------------------------------
+// Power Gem (3x3) and Hypercube expansion
+// ------------------------------------------------------------
+
+function expandForPowerGems(board: Board, mask: boolean[][]) {
+  const { rows, cols } = dims(board);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (mask[r]![c] && isPowerGem(board[r]![c]!)) {
+        for (let dr = -1; dr <= 1; dr++)
+          for (let dc = -1; dc <= 1; dc++)
+            if (inBounds(board, r + dr, c + dc))
+              mask[r + dr]![c + dc] = true;
+      }
+    }
+  }
+}
+
+function expandForHypercubes(board: Board, mask: boolean[][]) {
+  const { rows, cols } = dims(board);
+  const wipe: number[] = [];
+
+  // Which hypercubes are being cleared?
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (mask[r]![c] && isHypercube(board[r]![c]!)) {
+        const color = getBaseColor(board[r]![c]!);
+        if (!wipe.includes(color)) wipe.push(color);
+      }
+
+  if (wipe.length === 0) return;
+
+  // Wipe all gems of those colors
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const v = board[r]![c];
+      if (typeof v === "number" && v >= 0 &&
+          wipe.includes(getBaseColor(v))) {
+        mask[r]![c] = true;
+      }
+    }
+}
+
+// ------------------------------------------------------------
+// Apply clear
+// ------------------------------------------------------------
+
+function applyClearMask(board: Board, mask: boolean[][]): number {
+  const { rows, cols } = dims(board);
+  let cleared = 0;
+
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (mask[r]![c] && typeof board[r]![c] === "number" && board[r]![c]! >= 0) {
+        board[r]![c] = -1;
+        cleared++;
+      }
+
+  return cleared;
+}
+
+// ------------------------------------------------------------
+// PUBLIC — clear + score + special gem placement
+// ------------------------------------------------------------
+
+export function clearAndScore(
+  board: Board,
+  matches: CellRC[],
+  preferred: CellRC | null = null
 ): number {
-  if (runLengths.length === 0) {
-    return 0;
-  }
+  if (!matches.length) return 0;
 
-  // Next cascade in the chain
-  state.chainIndex += 1;
-  const chainMultiplier = state.chainIndex;
+  const mask = buildBaseMask(board, matches);
 
-  let stepBasePoints = 0;
+  const special = pickSpecialGem(board, mask, preferred);
+  applySpecialCreation(board, mask, special);
 
-  for (const len of runLengths) {
-    if (len < 3) {
-      continue; // not a scoring line
-    }
+  expandForPowerGems(board, mask);
+  expandForHypercubes(board, mask);
 
-    // Base value per cleared rock
-    const base = len * 10;
-
-    // Extra bonus depending on length
-    let bonus = 0;
-
-    if (len === 4) {
-      // Four in a line: star rock is created elsewhere.
-      bonus += 40;
-    } else if (len >= 5) {
-      // Five or more in a line: diamond rock is created elsewhere.
-      bonus += 50;
-    }
-
-    stepBasePoints += base + bonus;
-  }
-
-  const stepPoints = stepBasePoints * chainMultiplier;
-  state.total += stepPoints;
-  return stepPoints;
-}
-
-/**
- * Score a star rock activation.
- *
- * Parameters:
- * - clearedCount: how many rocks were cleared by this activation
- *
- * Returns:
- * - points added (before cascade multiplier)
- *
- * Use:
- * - Call this, then multiply by the current chainIndex if you want
- *   the same cascade behavior as applyLineClears, or simply add
- *   directly if you prefer a flat award.
- */
-export function scoreStarRockActivation(clearedCount: number): number {
-  if (clearedCount <= 0) return 0;
-
-  const base = clearedCount * 10;
-  const activationBonus = 60; // flat bonus for using a star rock
-
-  return base + activationBonus;
-}
-
-/**
- * Score a diamond rock activation.
- *
- * Parameters:
- * - clearedCount: how many rocks of a chosen color were cleared
- *
- * Returns:
- * - points added (before cascade multiplier)
- */
-export function scoreDiamondRockActivation(clearedCount: number): number {
-  if (clearedCount <= 0) return 0;
-
-  const base = clearedCount * 10;
-  const activationBonus = 120; // larger flat bonus for using a diamond rock
-
-  return base + activationBonus;
+  const cleared = applyClearMask(board, mask);
+  return cleared * USER_SCORING.perCell;
 }
