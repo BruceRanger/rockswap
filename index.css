@@ -1,1 +1,37 @@
+/* Page background + text */
+body {
+  margin: 0;
+  background: #505050;
+  color: #eeeeee;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* HUD text */
+#hud, .small {
+  text-align: center;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+/* Main RockSwap board size — responsive and safe */
+#board {
+  display: block;
+  margin: 20px auto;
+
+  /* Square board that fits phone/tablet/desktop */
+  width: min(92vw, 420px);
+  height: min(92vw, 420px);
+
+  border: 1px solid #aaa;
+  background: #444; /* purely decorative; renderer paints over it */
+}
+
+/* Small devices (iPhone SE) */
+@media (max-width: 400px) {
+  #board {
+    width: 90vw;
+    height: 90vw; /* stays square */
+  }
+}
 
