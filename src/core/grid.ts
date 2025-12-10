@@ -1,84 +1,137 @@
 // ============================================================
 // File: src/core/grid.ts
-// Purpose: Board creation & helpers for the match-3 grid
+// RockSwap board creation + gravity + refill
 // ------------------------------------------------------------
-// - Board cells are integers:
-//     0..KINDS-1  = rock color/type
-//     -1          = empty cell (after clears, before collapse/refill)
-// - Exports a simple board factory with a "no-starting-matches" pass.
-// - Strict-mode safe: all indexed accesses are guarded.
+// - Creates an initial board with normal rocks only
+// - Avoids starting matches
+// - Drops rocks downward to fill empty spaces
+// - Refills emptied cells with fresh rocks
+//
+// No terminology from other matching games is used.
 // ============================================================
 
-import { BOARD_SIZE, COUNT_OF_ROCK_TYPES } from "../config";
+import { CellKind, type Cell, isRock } from "./cell";
+import type { Board } from "../systems/renderer";
 
-export type Board = number[][];
-export const ROWS = BOARD_SIZE;
-export const COLS = BOARD_SIZE;
-export const KINDS = COUNT_OF_ROCK_TYPES;
+const BOARD_ROWS = 8;
+const BOARD_COLS = 8;
 
-/** Create an empty board filled with -1. */
-export function makeEmpty(rows = ROWS, cols = COLS): Board {
-  const out: number[][] = new Array(rows);
-  for (let r = 0; r < rows; r++) out[r] = new Array(cols).fill(-1);
-  return out;
-}
-
-/** Safe bounds check. */
-export function inBounds(r: number, c: number, rows: number, cols: number): boolean {
-  return r >= 0 && r < rows && c >= 0 && c < cols;
-}
-
-/** Safe getter: returns board[r][c] or undefined if out of range. */
-function getCell(b: Board, r: number, c: number): number | undefined {
-  const row = b[r];
-  if (!row) return undefined;
-  if (c < 0 || c >= row.length) return undefined;
-  return row[c];
-}
-
-/** Safe setter (no-op if out of range). */
-function setCell(b: Board, r: number, c: number, v: number): void {
-  const row = b[r];
-  if (!row) return;
-  if (c < 0 || c >= row.length) return;
-  row[c] = v;
+/**
+ * Create a random normal rock.
+ */
+function makeRandomRock(): Cell {
+  const color = Math.floor(Math.random() * 6); // 0..5 palette
+  return {
+    kind: CellKind.Rock,
+    color,
+  };
 }
 
 /**
- * Create a fresh board with random rocks and *attempt* to avoid
- * immediate 3+ matches on generation (re-rolls the single cell).
+ * Check if placing this rock at (r,c) creates a horizontal or vertical
+ * run of 3 equal-colored rocks.
  */
-export function createBoard(rows = ROWS, cols = COLS, kinds = KINDS): Board {
-  const b = makeEmpty(rows, cols);
-  const pick = () => Math.floor(Math.random() * kinds);
+function wouldCreateMatch(board: Board, r: number, c: number): boolean {
+  const cell = board[r][c];
+  if (!isRock(cell)) return false;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      let tries = 0;
+  const color = cell.color;
+
+  // Horizontal check
+  if (
+    c >= 2 &&
+    isRock(board[r][c - 1]) &&
+    isRock(board[r][c - 2]) &&
+    board[r][c - 1].color === color &&
+    board[r][c - 2].color === color
+  ) {
+    return true;
+  }
+
+  // Vertical check
+  if (
+    r >= 2 &&
+    isRock(board[r - 1][c]) &&
+    isRock(board[r - 2][c]) &&
+    board[r - 1][c].color === color &&
+    board[r - 2][c].color === color
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Fill the board randomly but avoid initial matches.
+ */
+export function createInitialBoard(): Board {
+  const board: Board = Array.from({ length: BOARD_ROWS }, () =>
+    Array.from({ length: BOARD_COLS }, () => ({
+      kind: CellKind.Empty,
+      color: 0,
+    }))
+  );
+
+  for (let r = 0; r < BOARD_ROWS; r++) {
+    for (let c = 0; c < BOARD_COLS; c++) {
       while (true) {
-        const v = pick();
-
-        // neighbors (strict-safe)
-        const left1 = getCell(b, r, c - 1);
-        const left2 = getCell(b, r, c - 2);
-        const up1 = getCell(b, r - 1, c);
-        const up2 = getCell(b, r - 2, c);
-
-        const makesHRun = left1 === v && left2 === v;
-        const makesVRun = up1 === v && up2 === v;
-
-        if (!makesHRun && !makesVRun) {
-          setCell(b, r, c, v);
-          break;
-        }
-        tries++;
-        if (tries > 12) {
-          // Give up being perfect; accept to avoid rare infinite loops.
-          setCell(b, r, c, v);
-          break;
-        }
+        board[r][c] = makeRandomRock();
+        if (!wouldCreateMatch(board, r, c)) break;
       }
     }
   }
-  return b;
+
+  return board;
+}
+
+/**
+ * Apply downward gravity: for each column, slide rocks down
+ * to fill empty spaces.
+ */
+function applyGravity(board: Board): void {
+  const rows = board.length;
+  const cols = rows > 0 ? board[0].length : 0;
+
+  for (let c = 0; c < cols; c++) {
+    let writeRow = rows - 1;
+
+    for (let r = rows - 1; r >= 0; r--) {
+      if (board[r][c].kind !== CellKind.Empty) {
+        if (writeRow !== r) {
+          board[writeRow][c] = board[r][c];
+        }
+        writeRow--;
+      }
+    }
+
+    // Fill remaining cells at top with Empty
+    for (let r = writeRow; r >= 0; r--) {
+      board[r][c] = { kind: CellKind.Empty, color: 0 };
+    }
+  }
+}
+
+/**
+ * After gravity, refill empty cells with fresh rocks.
+ */
+function refillBoard(board: Board): void {
+  const rows = board.length;
+  const cols = rows > 0 ? board[0].length : 0;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].kind === CellKind.Empty) {
+        board[r][c] = makeRandomRock();
+      }
+    }
+  }
+}
+
+/**
+ * Drop rocks and refill the board after clearing matches.
+ */
+export function dropAndRefillBoard(board: Board): void {
+  applyGravity(board);
+  refillBoard(board);
 }
