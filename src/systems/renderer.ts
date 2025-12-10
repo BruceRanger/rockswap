@@ -293,15 +293,28 @@ function drawDiamondRockOverlay(
   ctx.fillRect(x + pad, y + pad, size - 2 * pad, size - 2 * pad);
   ctx.restore();
 
-  // Diamond symbol (temporary)
+  // Diamond shape in the center (vector, not text)
   ctx.save();
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const r = size * 0.26; // radius from center to corners
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);     // top
+  ctx.lineTo(cx + r, cy);     // right
+  ctx.lineTo(cx, cy + r);     // bottom
+  ctx.lineTo(cx - r, cy);     // left
+  ctx.closePath();
+
   ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.font = `${Math.floor(size * 0.55)}px system-ui, -apple-system, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("◆", x + size / 2, y + size / 2 + size * 0.03);
+  ctx.fill();
+
+  ctx.lineWidth = Math.max(1.5, size * 0.04);
+  ctx.strokeStyle = "rgba(0,0,0,0.6)";
+  ctx.stroke();
   ctx.restore();
 }
+
 
 // -------------------- Highlights --------------------
 
