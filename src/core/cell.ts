@@ -5,7 +5,7 @@
 // Terminology:
 // - Rock:          normal colored rock
 // - Star rock ★:   special rock created during play
-// - Diamond rock ◆/◎: wild rock that can match any color
+// - Diamond rock ◆: wild rock that can match any color
 //
 // All naming avoids terminology from other matching games.
 // ============================================================
