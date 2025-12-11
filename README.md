@@ -20,6 +20,8 @@
 A match-3 puzzle game built with TypeScript and HTML5 Canvas.
 Installable as a Progressive Web App (PWA).
 
+---
+
 Features:
 
 - 8x8 board with 6 rock kinds
