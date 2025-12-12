@@ -195,7 +195,7 @@ export function renderBoard(
     ctx.fillText("NO MOVES – GAME OVER", W / 2, H / 2 - titleSize * 0.3);
 
     ctx.font = `${msgSize}px sans-serif`;
-    ctx.fillText("Tap Restart to play again", W / 2, H / 2 + msgSize * 0.9);
+    ctx.fillText("Tap New Game to play again", W / 2, H / 2 + msgSize * 0.9);
 
     ctx.restore();
   }
