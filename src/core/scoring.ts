@@ -92,13 +92,15 @@ function findAllRuns(board: Board): Run[] {
       const color = getBaseColor(v);
       let start = c;
       c++;
-      while (c < cols && typeof board[r]?.[c] === "number" &&
-             getBaseColor(board[r]![c]!) === color) {
+      while (
+        c < cols &&
+        typeof board[r]?.[c] === "number" &&
+        getBaseColor(board[r]![c]!) === color
+      ) {
         c++;
       }
       const len = c - start;
-      if (len >= 3)
-        runs.push({ kind: "H", color, row: r, col: -1, start, len });
+      if (len >= 3) runs.push({ kind: "H", color, row: r, col: -1, start, len });
     }
   }
 
@@ -114,13 +116,15 @@ function findAllRuns(board: Board): Run[] {
       const color = getBaseColor(v);
       let start = r;
       r++;
-      while (r < rows && typeof board[r]?.[c] === "number" &&
-             getBaseColor(board[r]![c]!) === color) {
+      while (
+        r < rows &&
+        typeof board[r]?.[c] === "number" &&
+        getBaseColor(board[r]![c]!) === color
+      ) {
         r++;
       }
       const len = r - start;
-      if (len >= 3)
-        runs.push({ kind: "V", color, row: -1, col: c, start, len });
+      if (len >= 3) runs.push({ kind: "V", color, row: -1, col: c, start, len });
     }
   }
 
@@ -144,8 +148,7 @@ function pickSpecialGem(
   if (runs.length === 0) return null;
 
   // Helper
-  const isMatched = (r: number, c: number) =>
-    inBounds(board, r, c) && mask[r]![c] === true;
+  const isMatched = (r: number, c: number) => inBounds(board, r, c) && mask[r]![c] === true;
 
   // If player moved a gem into place, we will prefer that cell
   // *AS LONG AS it is part of a suitable run*.
@@ -158,18 +161,22 @@ function pickSpecialGem(
       let r, c;
 
       if (preferred) {
-        if (run.kind === "H" &&
-            preferred.r === run.row &&
-            preferred.c >= run.start &&
-            preferred.c < run.start + run.len &&
-            isMatched(preferred.r, preferred.c)) {
+        if (
+          run.kind === "H" &&
+          preferred.r === run.row &&
+          preferred.c >= run.start &&
+          preferred.c < run.start + run.len &&
+          isMatched(preferred.r, preferred.c)
+        ) {
           r = preferred.r;
           c = preferred.c;
-        } else if (run.kind === "V" &&
-                   preferred.c === run.col &&
-                   preferred.r >= run.start &&
-                   preferred.r < run.start + run.len &&
-                   isMatched(preferred.r, preferred.c)) {
+        } else if (
+          run.kind === "V" &&
+          preferred.c === run.col &&
+          preferred.r >= run.start &&
+          preferred.r < run.start + run.len &&
+          isMatched(preferred.r, preferred.c)
+        ) {
           r = preferred.r;
           c = preferred.c;
         } else {
@@ -208,18 +215,22 @@ function pickSpecialGem(
       let r, c;
 
       if (preferred) {
-        if (run.kind === "H" &&
-            preferred.r === run.row &&
-            preferred.c >= run.start &&
-            preferred.c < run.start + run.len &&
-            isMatched(preferred.r, preferred.c)) {
+        if (
+          run.kind === "H" &&
+          preferred.r === run.row &&
+          preferred.c >= run.start &&
+          preferred.c < run.start + run.len &&
+          isMatched(preferred.r, preferred.c)
+        ) {
           r = preferred.r;
           c = preferred.c;
-        } else if (run.kind === "V" &&
-                   preferred.c === run.col &&
-                   preferred.r >= run.start &&
-                   preferred.r < run.start + run.len &&
-                   isMatched(preferred.r, preferred.c)) {
+        } else if (
+          run.kind === "V" &&
+          preferred.c === run.col &&
+          preferred.r >= run.start &&
+          preferred.r < run.start + run.len &&
+          isMatched(preferred.r, preferred.c)
+        ) {
           r = preferred.r;
           c = preferred.c;
         } else {
@@ -269,8 +280,7 @@ function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialG
   const color = getBaseColor(v);
   mask[r]![c] = false; // prevent immediate clearing
 
-  board[r]![c] =
-    type === "power" ? (color | FLAG_POWER) : (color | FLAG_HYPERCUBE);
+  board[r]![c] = type === "power" ? color | FLAG_POWER : color | FLAG_HYPERCUBE;
 }
 
 // ------------------------------------------------------------
@@ -284,8 +294,7 @@ function expandForPowerGems(board: Board, mask: boolean[][]) {
       if (mask[r]![c] && isPowerGem(board[r]![c]!)) {
         for (let dr = -1; dr <= 1; dr++)
           for (let dc = -1; dc <= 1; dc++)
-            if (inBounds(board, r + dr, c + dc))
-              mask[r + dr]![c + dc] = true;
+            if (inBounds(board, r + dr, c + dc)) mask[r + dr]![c + dc] = true;
       }
     }
   }
@@ -309,8 +318,7 @@ function expandForHypercubes(board: Board, mask: boolean[][]) {
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
       const v = board[r]![c];
-      if (typeof v === "number" && v >= 0 &&
-          wipe.includes(getBaseColor(v))) {
+      if (typeof v === "number" && v >= 0 && wipe.includes(getBaseColor(v))) {
         mask[r]![c] = true;
       }
     }

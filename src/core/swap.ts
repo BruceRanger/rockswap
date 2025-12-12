@@ -109,13 +109,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
  *        length >= 3 through either swapped cell, keep it and return true.
  *      - If it creates no such line, revert and return false.
  */
-export function trySwap(
-  board: Board,
-  r1: number,
-  c1: number,
-  r2: number,
-  c2: number
-): boolean {
+export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
   // Bounds + adjacency
   if (!inBounds(board, r1, c1) || !inBounds(board, r2, c2)) return false;
   if (!isAdjacent({ r: r1, c: c1 }, { r: r2, c: c2 })) return false;
@@ -136,9 +130,7 @@ export function trySwap(
   row2[c2] = a;
 
   // Check only local lines through the swapped cells.
-  const createdMatch =
-    hasLineThrough(board, r1, c1) ||
-    hasLineThrough(board, r2, c2);
+  const createdMatch = hasLineThrough(board, r1, c1) || hasLineThrough(board, r2, c2);
 
   if (!createdMatch) {
     // No match: undo the swap and reject

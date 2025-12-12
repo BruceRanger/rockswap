@@ -53,7 +53,7 @@ npm run dev
 # open http://localhost:5174
 ```
 
-Use CTRL+c or CMD+c to quit. 
+Use CTRL+c or CMD+c to quit.
 
 ---
 

@@ -16,7 +16,8 @@ export const ROCK_COLORS: string[] = [
   "rgba(128, 0, 128, 1)", // Purple
   "rgba(0, 255, 255, 1)", // Blue
   "rgba(255, 255, 0, 1)", // Yellow
-  "rgba(255, 255, 255, 1)"]; // White
+  "rgba(255, 255, 255, 1)"
+]; // White
 
 /**
  * Number of different rock types (derived from colors)

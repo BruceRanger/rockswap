@@ -18,8 +18,8 @@
 
 // --- Flag bits ------------------------------------------------
 
-export const FLAG_POWER = 1 << 8;      // 256
-export const FLAG_HYPERCUBE = 1 << 9;  // 512
+export const FLAG_POWER = 1 << 8; // 256
+export const FLAG_HYPERCUBE = 1 << 9; // 512
 
 // Mask for the base gem color (low byte only).
 export const COLOR_MASK = 0xff;

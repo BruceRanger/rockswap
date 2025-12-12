@@ -19,7 +19,7 @@ import { isPowerGem, isHypercube } from "./core/cell";
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
-const hud = document.getElementById("hud") as HTMLDivElement | null;
+const hud = document.getElementById("hud") as HTMLDivElement;
 const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
 if (versionEl) {
@@ -33,7 +33,7 @@ if (!canvas || !hud || !versionEl) {
   );
 }
 
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d")!;
 if (!ctx) {
   throw new Error("2D canvas context not available");
 }
@@ -58,14 +58,14 @@ let dragStart: { r: number; c: number } | null = null;
 function scoringSummary(): string {
   const per = USER_SCORING?.perCell ?? 10;
 
-  const exact = USER_SCORING?.bonuses?.exact || {};
-  const atLeast = USER_SCORING?.bonuses?.atLeast || {};
+  const exact = (USER_SCORING?.bonuses?.exact || {}) as Record<string, number>;
+  const atLeast = (USER_SCORING?.bonuses?.atLeast || {}) as Record<string, number>;
 
   const exactKeys = Object.keys(exact).sort((a, b) => Number(a) - Number(b));
   const atLeastKeys = Object.keys(atLeast).sort((a, b) => Number(a) - Number(b));
 
   const exactText =
-    exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k]} pts`).join(", ") : "none";
+    exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k as any]} pts`).join(", ") : "none";
 
   const atLeastText =
     atLeastKeys.length > 0
