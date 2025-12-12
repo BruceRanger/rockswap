@@ -13,6 +13,14 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.3.0] - 2025-12-11
+
+### Added
+
+- Burst
+
+---
+
 ## [0.2.0] - 2025-11-30
 
 ### Added
