@@ -14,8 +14,12 @@ import { refill } from "./core/refill";
 import { trySwap } from "./core/swap";
 import { clearAndScore, USER_SCORING } from "./core/scoring";
 import { renderBoard, pickCellAt } from "./systems/renderer";
-import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
-import { isPowerGem, isHypercube } from "./core/cell";
+import {
+  loadHighScore,
+  maybeUpdateHighScore,
+  clearHighScore,
+} from "./systems/highscore";
+import { isPowerGem, isHypercube, baseColor } from "./core/cell";
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
@@ -59,13 +63,18 @@ function scoringSummary(): string {
   const per = USER_SCORING?.perCell ?? 10;
 
   const exact = (USER_SCORING?.bonuses?.exact || {}) as Record<string, number>;
-  const atLeast = (USER_SCORING?.bonuses?.atLeast || {}) as Record<string, number>;
+  const atLeast = (USER_SCORING?.bonuses?.atLeast || {}) as Record<
+    string,
+    number
+  >;
 
   const exactKeys = Object.keys(exact).sort((a, b) => Number(a) - Number(b));
   const atLeastKeys = Object.keys(atLeast).sort((a, b) => Number(a) - Number(b));
 
   const exactText =
-    exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k as any]} pts`).join(", ") : "none";
+    exactKeys.length > 0
+      ? exactKeys.map((k) => `for ${k}: ${exact[k as any]} pts`).join(", ")
+      : "none";
 
   const atLeastText =
     atLeastKeys.length > 0
@@ -86,7 +95,10 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Promise<void> {
+function flashMatches(
+  matches: { r: number; c: number }[],
+  durationMs = 220
+): Promise<void> {
   return new Promise((resolve) => {
     const start = performance.now();
 
@@ -147,6 +159,43 @@ function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boo
   return false;
 }
 
+// ---- Hypercube activation (double circle acts like wild clear) ----
+// If a hypercube is part of the swap, clear all cells of the other cell's base color.
+// Returns true if a hypercube was involved (even if both were hypercubes).
+function activateHypercubeOnSwap(
+  b: number[][],
+  a: { r: number; c: number },
+  d: { r: number; c: number }
+): boolean {
+  const vA = b[a.r]?.[a.c];
+  const vD = b[d.r]?.[d.c];
+  if (typeof vA !== "number" || typeof vD !== "number") return false;
+  if (vA < 0 || vD < 0) return false;
+
+  const aIs = isHypercube(vA);
+  const dIs = isHypercube(vD);
+  if (!aIs && !dIs) return false;
+
+  // If both are hypercubes, treat as special but do nothing extra for now.
+  if (aIs && dIs) return true;
+
+  // Target color = non-hypercube side
+  const target = aIs ? baseColor(vD) : baseColor(vA);
+
+  // Clear all cells with that baseColor
+  for (let r = 0; r < b.length; r++) {
+    const row = b[r];
+    if (!row) continue;
+    for (let c = 0; c < row.length; c++) {
+      const v = row[c];
+      if (typeof v !== "number" || v < 0) continue;
+      if (baseColor(v) === target) row[c] = -1; // empty sentinel
+    }
+  }
+
+  return true;
+}
+
 // ---- Game-over detection: does ANY swap create a match? ----
 function cloneBoard(b: number[][]): number[][] {
   return b.map((row) => row.slice());
@@ -167,7 +216,7 @@ function hasAnyValidMove(b: number[][]): boolean {
       // Only need to test right and down neighbors to cover all pairs
       const dirs = [
         [0, 1],
-        [1, 0]
+        [1, 0],
       ] as const;
 
       for (const [dr, dc] of dirs) {
@@ -201,6 +250,12 @@ async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: 
     console.log("[input] Swap rejected (no match).");
     renderBoard(ctx, board, { gameOver });
     return;
+  }
+
+  // NEW: if a hypercube was involved, activate it immediately
+  const didHypercube = activateHypercubeOnSwap(board, a, b);
+  if (didHypercube) {
+    await animatePulse(1.08, 180);
   }
 
   moves++;
@@ -371,13 +426,8 @@ async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
   // Case 3: slide farther than 1 cell
   // Treat it like "just tap the end cell"
   // -------------------------
-  if (!firstPick) {
-    firstPick = endCell;
-    renderBoard(ctx, board, { selected: endCell, gameOver });
-  } else {
-    firstPick = endCell;
-    renderBoard(ctx, board, { selected: endCell, gameOver });
-  }
+  firstPick = endCell;
+  renderBoard(ctx, board, { selected: endCell, gameOver });
 }
 
 // ---- Wire up events ----
