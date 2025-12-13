@@ -3,15 +3,18 @@
 // Purpose:
 //   - Attempt a swap between two cells.
 //   - Commit the swap only if it creates at least one match
-//     involving one of the swapped cells.
+//     involving one of the swapped cells,
+//     OR if either swapped cell is a Hypercube (special cash-in).
 //   - If no match is created, revert the swap.
 // Notes:
 //   - We use baseColor(...) so Power Gems count as their
 //     underlying color for match detection.
+//   - Hypercube swaps are always allowed; resolution logic
+//     should handle the "clear all of a color" effect.
 // ============================================================
 
 import type { Board } from "./grid";
-import { baseColor, isEmpty } from "./cell";
+import { baseColor, isEmpty, isHypercube } from "./cell";
 
 // Basic board helpers
 function dims(board: Board) {
@@ -35,11 +38,15 @@ function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): b
  * Check for a horizontal or vertical line of length >= 3
  * passing through (r, c), using baseColor(...) and ignoring
  * empties / invalid cells.
+ *
+ * IMPORTANT: Hypercubes should NOT participate in normal 3-run matching,
+ * so if the anchor cell is a hypercube we return false.
  */
 function hasLineThrough(board: Board, r: number, c: number): boolean {
   if (!inBounds(board, r, c)) return false;
   const v0 = board[r]![c]!;
   if (typeof v0 !== "number" || isEmpty(v0)) return false;
+  if (isHypercube(v0)) return false;
 
   const color = baseColor(v0);
   if (color < 0) return false;
@@ -54,6 +61,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (cc >= 0) {
     const v = board[r]![cc]!;
     if (typeof v !== "number" || isEmpty(v)) break;
+    if (isHypercube(v)) break; // hypercube breaks normal runs
     if (baseColor(v) !== color) break;
     countH++;
     cc--;
@@ -64,6 +72,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (cc < cols) {
     const v = board[r]![cc]!;
     if (typeof v !== "number" || isEmpty(v)) break;
+    if (isHypercube(v)) break;
     if (baseColor(v) !== color) break;
     countH++;
     cc++;
@@ -79,6 +88,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (rr >= 0) {
     const v = board[rr]![c]!;
     if (typeof v !== "number" || isEmpty(v)) break;
+    if (isHypercube(v)) break;
     if (baseColor(v) !== color) break;
     countV++;
     rr--;
@@ -89,6 +99,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (rr < rows) {
     const v = board[rr]![c]!;
     if (typeof v !== "number" || isEmpty(v)) break;
+    if (isHypercube(v)) break;
     if (baseColor(v) !== color) break;
     countV++;
     rr++;
@@ -105,9 +116,9 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
  *  - If either cell is empty -> false
  *  - Otherwise:
  *      - Perform the swap on the board.
- *      - If it creates at least one horizontal/vertical line of
- *        length >= 3 through either swapped cell, keep it and return true.
- *      - If it creates no such line, revert and return false.
+ *      - If either swapped cell is a Hypercube -> keep and return true.
+ *      - Else if it creates a normal 3-run through either swapped cell -> keep and return true.
+ *      - Else revert and return false.
  */
 export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
   // Bounds + adjacency
@@ -129,7 +140,15 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
   row1[c1] = b;
   row2[c2] = a;
 
-  // Check only local lines through the swapped cells.
+  // If either swapped cell is a hypercube, ALWAYS allow the swap.
+  // The resolver will "cash it in".
+  const nowA = row1[c1]!;
+  const nowB = row2[c2]!;
+  if (isHypercube(nowA) || isHypercube(nowB)) {
+    return true;
+  }
+
+  // Otherwise, require a normal match through one of the swapped cells.
   const createdMatch = hasLineThrough(board, r1, c1) || hasLineThrough(board, r2, c2);
 
   if (!createdMatch) {
@@ -139,6 +158,5 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
     return false;
   }
 
-  // Swap is valid; keep it. resolveBoard() will handle clears & cascades.
   return true;
 }
