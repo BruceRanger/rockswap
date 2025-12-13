@@ -3,10 +3,9 @@
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
 // - A match is any run of length >= 3 of the same non-negative
-//   *base color*.
-// - Wildcard (hypercube / "diamond") cells match any color.
-// - Strict-mode safe (no possibly-undefined warnings).
-// - Exports both a mask-based finder and a cell-list finder.
+//   *base color* (ignoring Power flags).
+// - IMPORTANT: Hypercubes do NOT participate in normal runs.
+//   They are cleared only when explicitly "cashed in".
 // ============================================================
 
 import type { Board } from "./grid";
@@ -51,11 +50,11 @@ function markCol(mask: boolean[][], c: number, start: number, end: number): void
  * Internal: build a boolean mask of matches.
  * Returns a mask: true where the cell should be cleared.
  *
- * Matching rule:
- * - Empty (< 0) breaks runs.
- * - Wildcards (isHypercube) fit into any run.
- * - The run's "color" is the first non-wildcard color encountered.
- * - A run of only wildcards is ignored (doesn't count as a match).
+ * IMPORTANT:
+ *  - Power gems still match by baseColor(value).
+ *  - Hypercubes do NOT match normally:
+ *      - A hypercube breaks a run
+ *      - A run cannot start on a hypercube
  */
 export function findMatchesMask(board: Board): boolean[][] {
   const rows = board.length;
@@ -74,41 +73,25 @@ export function findMatchesMask(board: Board): boolean[][] {
 
     while (c < cols) {
       const v0 = row[c]!;
-      if (v0 < 0) {
+      if (v0 < 0 || isHypercube(v0)) {
         c++;
         continue;
       }
 
-      let color = baseColor(v0);
-      let haveColor = !isHypercube(v0);
-
-      const start = c;
+      const color = baseColor(v0);
+      let start = c;
       c++;
 
       while (c < cols) {
         const v = row[c]!;
         if (v < 0) break;
-
-        if (isHypercube(v)) {
-          c++;
-          continue; // wildcard always fits
-        }
-
-        const bc = baseColor(v);
-
-        if (!haveColor) {
-          color = bc;          // first real color in this run
-          haveColor = true;
-          c++;
-          continue;
-        }
-
-        if (bc !== color) break;
+        if (isHypercube(v)) break; // hypercube breaks runs
+        if (baseColor(v) !== color) break;
         c++;
       }
 
       const runLen = c - start;
-      if (haveColor && runLen >= 3) {
+      if (runLen >= 3) {
         markRow(mask, r, start, c - 1);
       }
     }
@@ -122,41 +105,25 @@ export function findMatchesMask(board: Board): boolean[][] {
 
     while (r < rows) {
       const v0 = board[r]![c]!;
-      if (v0 < 0) {
+      if (v0 < 0 || isHypercube(v0)) {
         r++;
         continue;
       }
 
-      let color = baseColor(v0);
-      let haveColor = !isHypercube(v0);
-
-      const start = r;
+      const color = baseColor(v0);
+      let start = r;
       r++;
 
       while (r < rows) {
         const v = board[r]![c]!;
         if (v < 0) break;
-
-        if (isHypercube(v)) {
-          r++;
-          continue; // wildcard always fits
-        }
-
-        const bc = baseColor(v);
-
-        if (!haveColor) {
-          color = bc;          // first real color in this run
-          haveColor = true;
-          r++;
-          continue;
-        }
-
-        if (bc !== color) break;
+        if (isHypercube(v)) break; // hypercube breaks runs
+        if (baseColor(v) !== color) break;
         r++;
       }
 
       const runLen = r - start;
-      if (haveColor && runLen >= 3) {
+      if (runLen >= 3) {
         markCol(mask, c, start, r - 1);
       }
     }
@@ -167,6 +134,7 @@ export function findMatchesMask(board: Board): boolean[][] {
 
 /**
  * Public: return matched cells as a list of { r, c }.
+ * This is what your resolve loop expects.
  */
 export function findMatches(board: Board): CellRC[] {
   const mask = findMatchesMask(board);
@@ -180,19 +148,11 @@ export function findMatches(board: Board): CellRC[] {
   return out;
 }
 
-/**
- * Compatibility alias (some versions call this findMatchesList).
- */
-export function findMatchesList(board: Board): CellRC[] {
-  return findMatches(board);
-}
-
 /** Combine masks if needed. */
 export function combineMatches(a: boolean[][], b: boolean[][]): boolean[][] {
   const rows = Math.max(a.length, b.length);
   const cols = rows > 0 ? Math.max(a[0]!.length, b[0]!.length) : 0;
   const out = makeMask(rows, cols);
-
   for (let r = 0; r < rows; r++) {
     const ar = a[r] || [];
     const br = b[r] || [];
