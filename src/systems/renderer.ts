@@ -121,11 +121,22 @@ export function renderBoard(
         ctx.font = `${Math.floor(cell * 0.6)}px sans-serif`;
 
         if (isPowerGem(v)) {
-          ctx.fillText("★", x + cell / 2, y + cell / 2);
-        } else if (isHypercube(v)) {
-          ctx.fillText("◎", x + cell / 2, y + cell / 2);
-        }
-      }
+  ctx.fillText("★", x + cell / 2, y + cell / 2);
+
+} else if (isHypercube(v)) {
+  const base = colorFor(board, r, c);
+  const inv = invertRgba(base);
+
+  ctx.save();
+  ctx.fillStyle = inv;
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+
+  ctx.strokeText("◆", x + cell / 2, y + cell / 2);
+  ctx.fillText("◆", x + cell / 2, y + cell / 2);
+  ctx.restore();
+}
+
       // ======================================================
     }
   }
