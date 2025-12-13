@@ -3,14 +3,11 @@
 // Purpose:
 //   - Attempt a swap between two cells.
 //   - Commit the swap only if it creates at least one match
-//     involving one of the swapped cells,
-//     OR if either swapped cell is a Hypercube (special cash-in).
-//   - If no match is created, revert the swap.
+//     OR if either swapped cell is a Hypercube (cash-in special).
 // Notes:
 //   - We use baseColor(...) so Power Gems count as their
 //     underlying color for match detection.
-//   - Hypercube swaps are always allowed; resolution logic
-//     should handle the "clear all of a color" effect.
+//   - Hypercubes do NOT participate in normal line checks.
 // ============================================================
 
 import type { Board } from "./grid";
@@ -30,7 +27,6 @@ function inBounds(board: Board, r: number, c: number): boolean {
 }
 
 function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): boolean {
-  // Manhattan distance 1
   return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
 }
 
@@ -39,14 +35,13 @@ function isAdjacent(a: { r: number; c: number }, b: { r: number; c: number }): b
  * passing through (r, c), using baseColor(...) and ignoring
  * empties / invalid cells.
  *
- * IMPORTANT: Hypercubes should NOT participate in normal 3-run matching,
- * so if the anchor cell is a hypercube we return false.
+ * IMPORTANT: Hypercubes never count as part of a normal run.
  */
 function hasLineThrough(board: Board, r: number, c: number): boolean {
   if (!inBounds(board, r, c)) return false;
   const v0 = board[r]![c]!;
   if (typeof v0 !== "number" || isEmpty(v0)) return false;
-  if (isHypercube(v0)) return false;
+  if (isHypercube(v0)) return false; // hypercube doesn't form normal runs
 
   const color = baseColor(v0);
   if (color < 0) return false;
@@ -61,7 +56,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (cc >= 0) {
     const v = board[r]![cc]!;
     if (typeof v !== "number" || isEmpty(v)) break;
-    if (isHypercube(v)) break; // hypercube breaks normal runs
+    if (isHypercube(v)) break; // hypercube breaks runs
     if (baseColor(v) !== color) break;
     countH++;
     cc--;
@@ -72,7 +67,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (cc < cols) {
     const v = board[r]![cc]!;
     if (typeof v !== "number" || isEmpty(v)) break;
-    if (isHypercube(v)) break;
+    if (isHypercube(v)) break; // hypercube breaks runs
     if (baseColor(v) !== color) break;
     countH++;
     cc++;
@@ -88,7 +83,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (rr >= 0) {
     const v = board[rr]![c]!;
     if (typeof v !== "number" || isEmpty(v)) break;
-    if (isHypercube(v)) break;
+    if (isHypercube(v)) break; // hypercube breaks runs
     if (baseColor(v) !== color) break;
     countV++;
     rr--;
@@ -99,7 +94,7 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
   while (rr < rows) {
     const v = board[rr]![c]!;
     if (typeof v !== "number" || isEmpty(v)) break;
-    if (isHypercube(v)) break;
+    if (isHypercube(v)) break; // hypercube breaks runs
     if (baseColor(v) !== color) break;
     countV++;
     rr++;
@@ -116,12 +111,11 @@ function hasLineThrough(board: Board, r: number, c: number): boolean {
  *  - If either cell is empty -> false
  *  - Otherwise:
  *      - Perform the swap on the board.
- *      - If either swapped cell is a Hypercube -> keep and return true.
- *      - Else if it creates a normal 3-run through either swapped cell -> keep and return true.
- *      - Else revert and return false.
+ *      - If either swapped cell is a Hypercube -> keep and return true
+ *        (resolve loop will "cash it in")
+ *      - Else, require a normal match line through either swapped cell.
  */
 export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: number): boolean {
-  // Bounds + adjacency
   if (!inBounds(board, r1, c1) || !inBounds(board, r2, c2)) return false;
   if (!isAdjacent({ r: r1, c: c1 }, { r: r2, c: c2 })) return false;
 
@@ -132,7 +126,6 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
   const a = row1[c1];
   const b = row2[c2];
 
-  // Must be valid numbers and not empties
   if (typeof a !== "number" || typeof b !== "number") return false;
   if (isEmpty(a) || isEmpty(b)) return false;
 
@@ -140,19 +133,15 @@ export function trySwap(board: Board, r1: number, c1: number, r2: number, c2: nu
   row1[c1] = b;
   row2[c2] = a;
 
-  // If either swapped cell is a hypercube, ALWAYS allow the swap.
-  // The resolver will "cash it in".
-  const nowA = row1[c1]!;
-  const nowB = row2[c2]!;
-  if (isHypercube(nowA) || isHypercube(nowB)) {
+  // If a hypercube is involved, always allow the swap (cash-in).
+  if (isHypercube(a) || isHypercube(b)) {
     return true;
   }
 
-  // Otherwise, require a normal match through one of the swapped cells.
+  // Otherwise, must create a normal match.
   const createdMatch = hasLineThrough(board, r1, c1) || hasLineThrough(board, r2, c2);
 
   if (!createdMatch) {
-    // No match: undo the swap and reject
     row1[c1] = a;
     row2[c2] = b;
     return false;
