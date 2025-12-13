@@ -136,6 +136,7 @@ export function renderBoard(
   ctx.fillText("◆", x + cell / 2, y + cell / 2);
   ctx.restore();
 }
+ }
 
       // ======================================================
     }
