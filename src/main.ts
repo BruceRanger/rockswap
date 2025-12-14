@@ -15,7 +15,7 @@ import { trySwap } from "./core/swap";
 import { clearAndScore, USER_SCORING } from "./core/scoring";
 import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
-import { isPowerGem, isHypercube, baseColor } from "./core/cell";
+import { isPowerGem, isHypercube } from "./core/cell";
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
@@ -23,34 +23,47 @@ const hud = document.getElementById("hud") as HTMLDivElement;
 const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
 if (versionEl) {
-  const updated = new Date(document.lastModified).toISOString();
+  const updated = new Date(document.lastModified).toISOString(); // full ISO date+time
   versionEl.textContent = ` • Version: ${packageInfo.version} • Updated: ${updated}`;
 }
 
 if (!canvas || !hud || !versionEl) {
-  throw new Error("Missing required DOM elements. Ensure canvas, hud, and version exist in index.html.");
+  throw new Error(
+    "Missing required DOM elements. Ensure canvas, hud, and version exist in index.html."
+  );
 }
 
 const ctx = canvas.getContext("2d")!;
-if (!ctx) throw new Error("2D canvas context not available");
+if (!ctx) {
+  throw new Error("2D canvas context not available");
+}
 
+// Make sure canvas actually receives pointer events (helps on mobile)
 canvas.style.touchAction = "none";
 canvas.style.pointerEvents = "auto";
 canvas.tabIndex = 0;
 
+// ---- Timing knobs ----
+// Normal speed
+const FLASH_MS = 240;
+const PULSE_MS = 160;
+const CASCADE_PAUSE_MS = 40;
+
+// Slow-motion when a special gem is cashed in (diamond or star)
+const SLOW_FLASH_MS = 750;
+const SLOW_PULSE_MS = 420;
+const SLOW_CASCADE_PAUSE_MS = 260;
+
 // ---- Game state ----
-let board = createBoard();
+let board = createBoard(); // size NxN filled with random cell types
 let score = 0;
 let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
-let isResolving = false;
+let isResolving = false; // to prevent input during resolution
 let high = loadHighScore();
 let lastSwapDest: { r: number; c: number } | null = null;
 let gameOver = false;
 let dragStart: { r: number; c: number } | null = null;
-
-// If a hypercube was swapped, we "cash it in" on the next resolve pass.
-let pendingHypercube: { r: number; c: number; targetColor: number } | null = null;
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
@@ -62,8 +75,13 @@ function scoringSummary(): string {
   const exactKeys = Object.keys(exact).sort((a, b) => Number(a) - Number(b));
   const atLeastKeys = Object.keys(atLeast).sort((a, b) => Number(a) - Number(b));
 
-  const exactText = exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k as any]} pts`).join(", ") : "none";
-  const atLeastText = atLeastKeys.length > 0 ? atLeastKeys.map((k) => `${k}+ cells: +${atLeast[k]} pts`).join(" | ") : "none";
+  const exactText =
+    exactKeys.length > 0 ? exactKeys.map((k) => `for ${k}: ${exact[k as any]} pts`).join(", ") : "none";
+
+  const atLeastText =
+    atLeastKeys.length > 0
+      ? atLeastKeys.map((k) => `${k}+ cells: +${atLeast[k]} pts`).join(" | ")
+      : "none";
 
   return "Scoring: " + per + " pts/cell; bonus " + exactText + ".";
 }
@@ -95,6 +113,7 @@ function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Pr
   });
 }
 
+// ---- Pulse animation when cashing in a special gem ----
 function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
   return new Promise((resolve) => {
     const start = performance.now();
@@ -117,32 +136,15 @@ function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
 // ---- Detect if this match "cashes in" any special gem ----
 function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boolean {
   for (const cell of matches) {
-    const v = b[cell.r]?.[cell.c];
+    const r = cell.r;
+    const c = cell.c;
+    const row = b[r];
+    if (!row) continue;
+    const v = row[c];
     if (typeof v !== "number" || v < 0) continue;
     if (isPowerGem(v) || isHypercube(v)) return true;
   }
   return false;
-}
-
-// ---- Hypercube cash-in: build a match list for "clear all of targetColor" ----
-function hypercubeMatchesFor(b: number[][], hc: { r: number; c: number; targetColor: number }): { r: number; c: number }[] {
-  const out: { r: number; c: number }[] = [];
-
-  // include the hypercube itself
-  out.push({ r: hc.r, c: hc.c });
-
-  for (let r = 0; r < b.length; r++) {
-    const row = b[r];
-    if (!row) continue;
-    for (let c = 0; c < row.length; c++) {
-      const v = row[c];
-      if (typeof v !== "number" || v < 0) continue;
-      if (isHypercube(v)) continue; // don't chain-clear other hypercubes
-      if (baseColor(v) === hc.targetColor) out.push({ r, c });
-    }
-  }
-
-  return out;
 }
 
 // ---- Game-over detection: does ANY swap create a match? ----
@@ -176,9 +178,7 @@ function hasAnyValidMove(b: number[][]): boolean {
         if (typeof v2 !== "number" || v2 < 0) continue;
 
         const copy = cloneBoard(b);
-        if (trySwap(copy as any, r, c, r2, c2)) {
-          return true;
-        }
+        if (trySwap(copy as any, r, c, r2, c2)) return true;
       }
     }
   }
@@ -186,13 +186,13 @@ function hasAnyValidMove(b: number[][]): boolean {
   return false;
 }
 
-// ---- Core: swap + resolve helper ----
+// ---- Core: swap + resolve helper (used by tap and slide) ----
 async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
   console.log("[input] Attempt swap", { a, b });
 
   const swapped = trySwap(board, a.r, a.c, b.r, b.c);
   if (!swapped) {
-    console.log("[input] Swap rejected.");
+    console.log("[input] Swap rejected (no match).");
     renderBoard(ctx, board, { gameOver });
     return;
   }
@@ -201,20 +201,6 @@ async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: 
   lastSwapDest = { r: b.r, c: b.c };
   updateHUD();
 
-  // Detect a hypercube swap AFTER the swap is applied.
-  // If hypercube ended up at position P, the "target color" is the baseColor of the OTHER cell.
-  pendingHypercube = null;
-  const va = board[a.r]?.[a.c];
-  const vb = board[b.r]?.[b.c];
-
-  if (typeof va === "number" && typeof vb === "number") {
-    if (isHypercube(va) && !isHypercube(vb)) {
-      pendingHypercube = { r: a.r, c: a.c, targetColor: baseColor(vb) };
-    } else if (isHypercube(vb) && !isHypercube(va)) {
-      pendingHypercube = { r: b.r, c: b.c, targetColor: baseColor(va) };
-    }
-  }
-
   try {
     await resolveBoard();
   } catch (e) {
@@ -222,7 +208,7 @@ async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: 
   }
 }
 
-// ---- Resolve helper ----
+// ---- Resolve helper: match -> flash -> clear -> collapse -> refill (repeat until stable) ----
 async function resolveBoard() {
   if (isResolving) return;
   isResolving = true;
@@ -238,28 +224,24 @@ async function resolveBoard() {
     while (pass < maxPasses) {
       pass++;
 
-      // If we have a pending hypercube cash-in, do it on the FIRST pass.
-      let matches: { r: number; c: number }[] = [];
-      if (pendingHypercube && pass === 1) {
-        matches = hypercubeMatchesFor(board, pendingHypercube);
-        // consume it so it doesn't repeat
-        pendingHypercube = null;
-      } else {
-        matches = findMatches(board);
-      }
-
+      const matches = findMatches(board);
       console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
       if (matches.length === 0) break;
 
       const specialUsed = usedSpecialGem(board, matches);
 
-      await flashMatches(matches, 240);
+      // Slow motion ONLY when a special is actually being cleared
+      const flashMs = specialUsed ? SLOW_FLASH_MS : FLASH_MS;
+      const pulseMs = specialUsed ? SLOW_PULSE_MS : PULSE_MS;
+      const pauseMs = specialUsed ? SLOW_CASCADE_PAUSE_MS : CASCADE_PAUSE_MS;
+
+      await flashMatches(matches, flashMs);
 
       const basePoints = clearAndScore(board, matches, preferred);
       preferred = null;
 
       if (specialUsed) {
-        await animatePulse(1.06, 160);
+        await animatePulse(1.06, pulseMs);
       }
 
       if (basePoints > 0) {
@@ -273,7 +255,7 @@ async function resolveBoard() {
       renderBoard(ctx, board, { gameOver });
 
       chain++;
-      await delay(40);
+      await delay(pauseMs);
     }
   } catch (e) {
     console.warn("[resolveBoard] error:", e);
@@ -285,24 +267,31 @@ async function resolveBoard() {
     updateHUD();
     renderBoard(ctx, board, { gameOver });
 
-    if (gameOver) hud.textContent += " | No moves – Game Over";
+    if (gameOver) {
+      hud.textContent += " | No moves – Game Over";
+    }
   }
 }
 
 // ---- Input: tap or slide to attempt a swap ----
-
 function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
   if (isResolving || gameOver) return;
 
   const picked = pickCellAt(board, canvas!, ev);
   if (!picked) {
+    console.warn("[handlePointerDown] No cell picked.");
     dragStart = null;
     return;
   }
+
   dragStart = picked;
 }
 
 async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
+  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+
   if (isResolving || gameOver) return;
 
   const endCell = pickCellAt(board, canvas!, ev);
@@ -376,7 +365,6 @@ document.getElementById("restart-btn")?.addEventListener("click", () => {
   lastSwapDest = null;
   gameOver = false;
   dragStart = null;
-  pendingHypercube = null;
 
   renderBoard(ctx, board, { gameOver });
   resolveBoard()
