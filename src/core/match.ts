@@ -2,16 +2,18 @@
 // File: src/core/match.ts
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
-// Wildcard rule (Hypercube / diamond):
-// - A hypercube can stand in for ANY color when detecting runs.
-// - A valid run is either:
-//     * 3+ non-wild of the same color, OR
-//     * 2+ non-wild of the same color + 1+ wild
-// - A run of only wilds does NOT count.
+// - A match is any run length >= 3 of the same base color,
+//   but:
+//     * Power gems (★) match as their base color (flags ignored)
+//     * Hypercube/Diamond (◆) is a TRUE wildcard:
+//         - It matches ANY color in a run
+//         - If a run starts with wildcards, it "adopts" the first
+//           real color it encounters
+// - Strict-mode safe.
 // ============================================================
 
 import type { Board } from "./grid";
-import { baseColor, isEmpty, isHypercube } from "./cell";
+import { baseColor, isHypercube } from "./cell";
 
 export type CellRC = { r: number; c: number };
 
@@ -40,18 +42,69 @@ function markCol(mask: boolean[][], c: number, start: number, end: number): void
   for (let r = start; r <= end; r++) mask[r]![c] = true;
 }
 
-function isWild(v: number): boolean {
-  return isHypercube(v);
-}
-
-function isUsable(v: number): boolean {
-  return typeof v === "number" && !isEmpty(v) && v >= 0;
-}
-
 /**
- * Scan a line (row or column) and mark any matching runs.
- * Implementation is duplicated for clarity/perf.
+ * Scan a 1D line (array of cell values) and return segments [start,end]
+ * that are matches under wildcard rules.
+ *
+ * Rule:
+ *  - Negative = break (empty)
+ *  - Wildcard matches any color
+ *  - Run color is the first non-wild cell's baseColor encountered
+ *    (wilds at the beginning don't decide the color)
  */
+function findWildcardRunsInLine(line: number[]): Array<{ start: number; end: number }> {
+  const runs: Array<{ start: number; end: number }> = [];
+  let i = 0;
+
+  while (i < line.length) {
+    const v0 = line[i]!;
+    if (v0 < 0) {
+      i++;
+      continue;
+    }
+
+    let start = i;
+
+    // color = -1 means "unknown yet" (only seen wildcards so far)
+    let color = isHypercube(v0) ? -1 : baseColor(v0);
+
+    i++;
+
+    while (i < line.length) {
+      const v = line[i]!;
+      if (v < 0) break;
+
+      if (isHypercube(v)) {
+        // wildcard always continues the run
+        i++;
+        continue;
+      }
+
+      const bc = baseColor(v);
+
+      if (color === -1) {
+        // first real color in this run sets the run's color
+        color = bc;
+        i++;
+        continue;
+      }
+
+      if (bc !== color) break;
+
+      i++;
+    }
+
+    const end = i - 1;
+    const runLen = end - start + 1;
+
+    if (runLen >= 3) {
+      runs.push({ start, end });
+    }
+  }
+
+  return runs;
+}
+
 export function findMatchesMask(board: Board): boolean[][] {
   const rows = board.length;
   if (rows === 0) return [];
@@ -60,137 +113,30 @@ export function findMatchesMask(board: Board): boolean[][] {
 
   const mask = makeMask(rows, cols);
 
-  // --------------------------
-  // Horizontal
-  // --------------------------
+  // ---------------------------
+  // Horizontal runs
+  // ---------------------------
   for (let r = 0; r < rows; r++) {
     const row = board[r]!;
-    let c = 0;
-
-    while (c < cols) {
-      const v0 = row[c]!;
-      if (!isUsable(v0)) {
-        c++;
-        continue;
-      }
-
-      // Build a maximal segment where:
-      // - empties break
-      // - non-wild color mismatch breaks (wilds never break)
-      let start = c;
-      let runColor: number | null = null;
-      let wildCount = 0;
-      let nonWildCount = 0;
-
-      // Initialize with first cell
-      if (isWild(v0)) wildCount++;
-      else {
-        runColor = baseColor(v0);
-        nonWildCount++;
-      }
-
-      c++;
-
-      while (c < cols) {
-        const v = row[c]!;
-        if (!isUsable(v)) break;
-
-        if (isWild(v)) {
-          wildCount++;
-          c++;
-          continue;
-        }
-
-        const bc = baseColor(v);
-        if (runColor === null) {
-          runColor = bc;
-          nonWildCount++;
-          c++;
-          continue;
-        }
-
-        if (bc !== runColor) break;
-
-        nonWildCount++;
-        c++;
-      }
-
-      const runLen = c - start;
-
-      // Valid run rules:
-      // - Must have a real color (not all wilds)
-      // - Either 3+ non-wild, OR 2+ non-wild plus at least 1 wild
-      const valid =
-        runColor !== null &&
-        runLen >= 3 &&
-        (nonWildCount >= 3 || (nonWildCount >= 2 && wildCount >= 1));
-
-      if (valid) {
-        markRow(mask, r, start, c - 1);
-      }
+    const line = row.map((v) => (typeof v === "number" ? v : -1));
+    const runs = findWildcardRunsInLine(line);
+    for (const run of runs) {
+      markRow(mask, r, run.start, run.end);
     }
   }
 
-  // --------------------------
-  // Vertical
-  // --------------------------
+  // ---------------------------
+  // Vertical runs
+  // ---------------------------
   for (let c = 0; c < cols; c++) {
-    let r = 0;
-
-    while (r < rows) {
-      const v0 = board[r]![c]!;
-      if (!isUsable(v0)) {
-        r++;
-        continue;
-      }
-
-      let start = r;
-      let runColor: number | null = null;
-      let wildCount = 0;
-      let nonWildCount = 0;
-
-      if (isWild(v0)) wildCount++;
-      else {
-        runColor = baseColor(v0);
-        nonWildCount++;
-      }
-
-      r++;
-
-      while (r < rows) {
-        const v = board[r]![c]!;
-        if (!isUsable(v)) break;
-
-        if (isWild(v)) {
-          wildCount++;
-          r++;
-          continue;
-        }
-
-        const bc = baseColor(v);
-        if (runColor === null) {
-          runColor = bc;
-          nonWildCount++;
-          r++;
-          continue;
-        }
-
-        if (bc !== runColor) break;
-
-        nonWildCount++;
-        r++;
-      }
-
-      const runLen = r - start;
-
-      const valid =
-        runColor !== null &&
-        runLen >= 3 &&
-        (nonWildCount >= 3 || (nonWildCount >= 2 && wildCount >= 1));
-
-      if (valid) {
-        markCol(mask, c, start, r - 1);
-      }
+    const line: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      const v = board[r]![c]!;
+      line.push(typeof v === "number" ? v : -1);
+    }
+    const runs = findWildcardRunsInLine(line);
+    for (const run of runs) {
+      markCol(mask, c, run.start, run.end);
     }
   }
 
@@ -222,5 +168,6 @@ export function combineMatches(a: boolean[][], b: boolean[][]): boolean[][] {
       or[c] = ar[c] === true || br[c] === true;
     }
   }
+
   return out;
 }
