@@ -43,16 +43,30 @@ canvas.style.touchAction = "none";
 canvas.style.pointerEvents = "auto";
 canvas.tabIndex = 0;
 
-// ---- Timing knobs ----
-// Normal speed
-const FLASH_MS = 240;
-const PULSE_MS = 160;
-const CASCADE_PAUSE_MS = 40;
+// ---- Slow motion control ----
+type SpeedMode = { name: string; factor: number };
+const SPEEDS: SpeedMode[] = [
+  { name: "Normal", factor: 1 },
+  { name: "Slow", factor: 4 },
+  { name: "Very Slow", factor: 9 }
+];
+let speedIdx = 1; // start in Slow so you can immediately see cascades
+let speed = SPEEDS[speedIdx]!;
 
-// Slow-motion when a special gem is cashed in (diamond or star)
-const SLOW_FLASH_MS = 750;
-const SLOW_PULSE_MS = 420;
-const SLOW_CASCADE_PAUSE_MS = 260;
+function setSpeed(nextIdx: number) {
+  speedIdx = (nextIdx + SPEEDS.length) % SPEEDS.length;
+  speed = SPEEDS[speedIdx]!;
+  console.log(`[speed] ${speed.name} (x${speed.factor})`);
+  updateHUD();
+  renderBoard(ctx, board, { gameOver, selected: firstPick ?? undefined });
+}
+
+// Press "S" to cycle speed
+document.addEventListener("keydown", (ev) => {
+  if (ev.key.toLowerCase() === "s") {
+    setSpeed(speedIdx + 1);
+  }
+});
 
 // ---- Game state ----
 let board = createBoard(); // size NxN filled with random cell types
@@ -88,13 +102,14 @@ function scoringSummary(): string {
 
 // ---- HUD helper ----
 function updateHUD() {
-  hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
+  hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves} | Speed: ${speed.name} (press S)`;
   hud.title = scoringSummary();
 }
 
 // ---- Small async helpers ----
 function delay(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+  // Global speed factor affects all cascade pacing
+  return new Promise<void>((resolve) => setTimeout(resolve, Math.round(ms * speed.factor)));
 }
 
 function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Promise<void> {
@@ -102,11 +117,15 @@ function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Pr
     const start = performance.now();
 
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
+      const t = Math.min(1, (now - start) / (durationMs * speed.factor));
+      // Pulsing alpha from 0.4 to 1.0
       const alpha = 0.4 + 0.6 * Math.sin(t * Math.PI * 3);
       renderBoard(ctx, board, { highlight: matches, alpha, gameOver });
-      if (t >= 1) resolve();
-      else requestAnimationFrame(step);
+      if (t >= 1) {
+        resolve();
+      } else {
+        requestAnimationFrame(step);
+      }
     };
 
     requestAnimationFrame(step);
@@ -119,14 +138,19 @@ function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
     const start = performance.now();
 
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
-      const phase = t < 0.5 ? t * 2 : (1 - t) * 2;
+      const t = Math.min(1, (now - start) / (durationMs * speed.factor));
+
+      // Grow then shrink in one cycle: 0 → 1 → 0
+      const phase = t < 0.5 ? t * 2 : (1 - t) * 2; // 0..1..0
       const scale = 1 + (maxScale - 1) * phase;
 
       renderBoard(ctx, board, { gameOver, pulse: scale });
 
-      if (t >= 1) resolve();
-      else requestAnimationFrame(step);
+      if (t >= 1) {
+        resolve();
+      } else {
+        requestAnimationFrame(step);
+      }
     };
 
     requestAnimationFrame(step);
@@ -142,7 +166,9 @@ function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boo
     if (!row) continue;
     const v = row[c];
     if (typeof v !== "number" || v < 0) continue;
-    if (isPowerGem(v) || isHypercube(v)) return true;
+    if (isPowerGem(v) || isHypercube(v)) {
+      return true;
+    }
   }
   return false;
 }
@@ -164,6 +190,7 @@ function hasAnyValidMove(b: number[][]): boolean {
       const v = row[c];
       if (typeof v !== "number" || v < 0) continue;
 
+      // Only need to test right and down neighbors to cover all pairs
       const dirs = [
         [0, 1],
         [1, 0]
@@ -177,8 +204,11 @@ function hasAnyValidMove(b: number[][]): boolean {
         const v2 = b[r2]?.[c2];
         if (typeof v2 !== "number" || v2 < 0) continue;
 
+        // Work on a copy so we don't disturb the real board
         const copy = cloneBoard(b);
-        if (trySwap(copy as any, r, c, r2, c2)) return true;
+        if (trySwap(copy as any, r, c, r2, c2)) {
+          return true;
+        }
       }
     }
   }
@@ -230,32 +260,43 @@ async function resolveBoard() {
 
       const specialUsed = usedSpecialGem(board, matches);
 
-      // Slow motion ONLY when a special is actually being cleared
-      const flashMs = specialUsed ? SLOW_FLASH_MS : FLASH_MS;
-      const pulseMs = specialUsed ? SLOW_PULSE_MS : PULSE_MS;
-      const pauseMs = specialUsed ? SLOW_CASCADE_PAUSE_MS : CASCADE_PAUSE_MS;
+      // 1) show what is about to clear
+      await flashMatches(matches, 240);
 
-      await flashMatches(matches, flashMs);
-
+      // 2) CLEAR and PAUSE so you can see the “holes”
       const basePoints = clearAndScore(board, matches, preferred);
       preferred = null;
 
+      renderBoard(ctx, board, { gameOver });
+      await delay(250);
+
+      // Optional “special used” pulse (also slowed)
       if (specialUsed) {
-        await animatePulse(1.06, pulseMs);
+        await animatePulse(1.06, 160);
+        await delay(160);
       }
 
+      // scoring
       if (basePoints > 0) {
         score += basePoints * chain;
-        if (score > high) high = maybeUpdateHighScore(score);
+        if (score > high) {
+          high = maybeUpdateHighScore(score);
+        }
       }
+      updateHUD();
 
+      // 3) COLLAPSE and PAUSE so you can see rocks drop
       collapse(board);
-      refill(board);
-
       renderBoard(ctx, board, { gameOver });
+      await delay(350);
+
+      // 4) REFILL and PAUSE so you can see new rocks appear
+      refill(board);
+      renderBoard(ctx, board, { gameOver });
+      await delay(350);
 
       chain++;
-      await delay(pauseMs);
+      await delay(120); // between cascade passes
     }
   } catch (e) {
     console.warn("[resolveBoard] error:", e);
@@ -274,6 +315,8 @@ async function resolveBoard() {
 }
 
 // ---- Input: tap or slide to attempt a swap ----
+
+// Pointer down: remember where the drag started
 function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
   console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
 
@@ -289,6 +332,7 @@ function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
   dragStart = picked;
 }
 
+// Pointer up: decide if this was a tap or a slide, then act
 async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
   console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
 
@@ -307,6 +351,7 @@ async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
   const dc = endCell.c - start.c;
   const manhattan = Math.abs(dr) + Math.abs(dc);
 
+  // Case 1: tap
   if (manhattan === 0) {
     const cell = endCell;
 
@@ -337,12 +382,14 @@ async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
     return;
   }
 
+  // Case 2: slide to adjacent cell
   if (manhattan === 1) {
     firstPick = null;
     await doSwapAndResolve(start, endCell);
     return;
   }
 
+  // Case 3: slide farther than 1 cell -> treat like select end cell
   firstPick = endCell;
   renderBoard(ctx, board, { selected: endCell, gameOver });
 }
