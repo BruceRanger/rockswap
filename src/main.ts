@@ -17,6 +17,31 @@ import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
 import { isPowerGem, isHypercube } from "./core/cell";
 
+// ================= DEBUG TEST BOARD =================
+
+// Base color aliases (from config.ts order)
+const R = 0; // Red
+const G = 1; // Green
+const O = 2; // Orange
+const P = 3; // Purple
+const B = 4; // Blue
+const Y = 5; // Yellow
+const W = 6; // White
+
+// Flags
+const S = FLAG_POWER;     // ★
+const D = FLAG_HYPERCUBE; // ◆
+
+function makeTestBoard(): number[][] {
+  return [
+    [R, R, D | R, R, R],
+    [G, S | G, G, P, O],
+    [W, W, D | W, W, W],
+    [B, P, O, S | P, B],
+    [Y, Y, Y, D | Y, Y],
+  ];
+}
+
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
 const hud = document.getElementById("hud") as HTMLDivElement;
