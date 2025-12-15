@@ -346,6 +346,49 @@ function applyClearMask(board: Board, mask: boolean[][]): number {
 // PUBLIC — clear + score + special gem placement
 // ------------------------------------------------------------
 
+function expandForDiamondAffectedColors(board: Board, mask: boolean[][]): void {
+  const rows = board.length;
+  const cols = rows > 0 ? board[0]!.length : 0;
+
+  let diamondIncluded = false;
+  const affected = new Set<number>();
+
+  // 1) Scan what is already marked to clear: detect diamond + collect colors.
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!mask[r]?.[c]) continue;
+
+      const v = board[r]?.[c];
+      if (typeof v !== "number" || v < 0) continue;
+
+      if (isHypercube(v)) {
+        diamondIncluded = true;
+      } else {
+        // Power rocks count as their base color here (that’s what you want)
+        affected.add(getBaseColor(v));
+      }
+    }
+  }
+
+  // No diamond in this clear → nothing to do.
+  if (!diamondIncluded) return;
+
+  // If it’s only diamonds with no real colors (rare), do nothing.
+  if (affected.size === 0) return;
+
+  // 2) Expand: mark all cells on the board with any affected color.
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = board[r]?.[c];
+      if (typeof v !== "number" || v < 0) continue;
+
+      if (affected.has(getBaseColor(v))) {
+        mask[r]![c] = true;
+      }
+    }
+  }
+}
+
 export function clearAndScore(
   board: Board,
   matches: CellRC[],
