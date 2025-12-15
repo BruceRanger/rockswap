@@ -15,7 +15,13 @@ import { trySwap } from "./core/swap";
 import { clearAndScore, USER_SCORING } from "./core/scoring";
 import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
-import { isPowerGem, isHypercube } from "./core/cell";
+//import { isPowerGem, isHypercube } from "./core/cell";
+import {
+  isPowerGem,
+  isHypercube,
+  FLAG_POWER,
+  FLAG_HYPERCUBE
+} from "./core/cell";
 
 // ================= DEBUG TEST BOARD =================
 
