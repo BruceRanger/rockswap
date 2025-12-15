@@ -32,7 +32,7 @@ const W = 6; // White
 const S = FLAG_POWER;     // ★
 const D = FLAG_HYPERCUBE; // ◆
 
-function makeTestBoard(): number[][] {
+/*function makeTestBoard(): number[][] {
   return [
     [R, R, D | R, R, R],
     [G, S | G, G, P, O],
@@ -40,7 +40,7 @@ function makeTestBoard(): number[][] {
     [B, P, O, S | P, B],
     [Y, Y, Y, D | Y, Y],
   ];
-}
+}*/
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
