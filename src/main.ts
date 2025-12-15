@@ -92,7 +92,8 @@ document.addEventListener("keydown", (ev) => {
 });
 
 // ---- Game state ----
-let board = createBoard(); // size NxN filled with random cell types
+//let board = createBoard(); // size NxN filled with random cell types
+let board = makeTestBoard();
 let score = 0;
 let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
