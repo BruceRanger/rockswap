@@ -25,6 +25,8 @@ import {
 
 // ================= DEBUG TEST BOARD =================
 
+const USE_TEST_BOARD = false;
+
 // Base color aliases (from config.ts order)
 const R = 0; // Red
 const G = 1; // Green
@@ -124,7 +126,8 @@ document.addEventListener("keydown", (ev) => {
 
 // ---- Game state ----
 //let board = createBoard(); // size NxN filled with random cell types
-let board = makeTestBoard();
+//let board = makeTestBoard();
+let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 let score = 0;
 let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
