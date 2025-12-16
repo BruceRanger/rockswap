@@ -31,7 +31,7 @@ function useTestBoardFromURL(): boolean {
 
 const USE_TEST_BOARD = useTestBoardFromURL(); // add ?test to URL
 
-let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+//let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
 
 // Base color aliases (from config.ts order)
