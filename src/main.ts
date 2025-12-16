@@ -29,7 +29,10 @@ function useTestBoardFromURL(): boolean {
   return new URLSearchParams(window.location.search).has("test");
 }
 
-const USE_TEST_BOARD = false;
+const USE_TEST_BOARD = useTestBoardFromURL(); // add ?test to URL
+
+let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+
 
 // Base color aliases (from config.ts order)
 const R = 0; // Red
@@ -81,29 +84,6 @@ const ctx = canvas.getContext("2d")!;
 if (!ctx) {
   throw new Error("2D canvas context not available");
 }
-
-// Make a test board
-function makeTestBoard(): number[][] {
-  const E = -1; // empty (if you use -1)
-  const W = 0;  // white
-  const R = 1;  // red
-  const B = 2;  // blue
-
-  // Use your real flag constant
-  const D = FLAG_HYPERCUBE | W; // diamond on white
-
-  return [
-    [R, W, W, D, W, R, B, B],
-    [B, R, W, W, W, B, R, R],
-    [W, B, R, R, B, W, B, W],
-    [R, W, B, D, W, R, W, R],
-    [B, R, W, W, W, B, R, B],
-    [R, B, R, B, R, W, B, R],
-    [W, R, B, R, B, R, W, B],
-    [B, W, R, B, W, B, R, W],
-  ];
-}
-
 
 // Make sure canvas actually receives pointer events (helps on mobile)
 canvas.style.touchAction = "none";
