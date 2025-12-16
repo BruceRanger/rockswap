@@ -25,6 +25,10 @@ import {
 
 // ================= DEBUG TEST BOARD =================
 
+function useTestBoardFromURL(): boolean {
+  return new URLSearchParams(window.location.search).has("test");
+}
+
 const USE_TEST_BOARD = false;
 
 // Base color aliases (from config.ts order)
@@ -40,19 +44,26 @@ const W = 6; // White
 const S = FLAG_POWER;     // ★
 const D = FLAG_HYPERCUBE; // ◆
 
-/*function makeTestBoard(): number[][] {
+function makeTestBoard(): number[][] {
   return [
-    [R, R, D | R, R, R],
-    [G, S | G, G, P, O],
-    [W, W, D | W, W, W],
-    [B, P, O, S | P, B],
-    [Y, Y, Y, D | Y, Y],
+    [R, G, O, P, B, Y, W, R],
+    [G, O, P, B, Y, W, R, G],
+    [O, P, S | G, Y, W, R, G, O],
+    [P, B, Y, W, R, G, O, P],
+    [B, Y, W, R, D | W, O, P, B],
+    [Y, W, R, G, O, P, B, Y],
+    [W, R, G, O, P, B, Y, W],
+    [R, G, O, P, B, Y, W, R],
   ];
-}*/
+}
+
 
 // Grab document elements
 const canvas = document.getElementById("board") as HTMLCanvasElement | null;
 const hud = document.getElementById("hud") as HTMLDivElement;
+if (USE_TEST_BOARD) {
+  hud.textContent += " | TEST BOARD";
+}
 const versionEl = document.getElementById("version") as HTMLSpanElement | null;
 
 if (versionEl) {
@@ -127,7 +138,12 @@ document.addEventListener("keydown", (ev) => {
 // ---- Game state ----
 //let board = createBoard(); // size NxN filled with random cell types
 //let board = makeTestBoard();
-let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+//let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+const USE_TEST_BOARD = useTestBoardFromURL();
+
+let board = USE_TEST_BOARD
+  ? makeTestBoard()
+  : createBoard();
 let score = 0;
 let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
