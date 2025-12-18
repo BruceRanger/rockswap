@@ -90,7 +90,7 @@ const ctx = canvas.getContext("2d")!;
 const hud = document.getElementById("hud") as HTMLDivElement;
 
 function updateHUD() {
-  const stamp = new Date(document.lastModified).toISOString().split("T")[0]; // YYYY-MM-DD
+const stamp = new Date(document.lastModified).toLocaleString();
   hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves} | Updated: ${stamp}`;
   hud.title = scoringSummary();
 }
