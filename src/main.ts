@@ -33,15 +33,7 @@ let lastSwapDest: { r: number; c: number } | null = null;
 let gameOver = false;
 let dragStart: { r: number; c: number } | null = null;
 
-const USE_TEST_BOARD = useTestBoardFromURL();
-
-// Board data
-let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
-
 // ================= DEBUG TEST BOARD =================
-function useTestBoardFromURL(): boolean {
-  return new URLSearchParams(window.location.search).has("test");
-}
 
 // Base color aliases (from config.ts order)
 const R = 0, G = 1, O = 2, P = 3, B = 4, Y = 5, W = 6;
@@ -50,6 +42,7 @@ const R = 0, G = 1, O = 2, P = 3, B = 4, Y = 5, W = 6;
 const S = FLAG_POWER;     // ★
 const D = FLAG_HYPERCUBE; // ◆
 
+// Fixed test board
 function makeTestBoard(): number[][] {
   return [
     [R, G, O, P, B, Y, W, R],
@@ -62,6 +55,17 @@ function makeTestBoard(): number[][] {
     [R, G, O, P, B, Y, W, R],
   ];
 }
+
+function useTestBoardFromURL(): boolean {
+  return new URLSearchParams(window.location.search).has("test");
+}
+
+// Decide once per load whether to use the test board
+const USE_TEST_BOARD = useTestBoardFromURL();
+
+// Board data
+let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
