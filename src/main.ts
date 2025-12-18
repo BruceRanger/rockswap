@@ -91,9 +91,11 @@ const hud = document.getElementById("hud") as HTMLDivElement;
 
 // ---- HUD helper ----
 function updateHUD() {
-hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
+  const stamp = new Date(document.lastModified).toISOString().split("T")[0]; // YYYY-MM-DD
+  hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves} | Updated: ${stamp}`;
   hud.title = scoringSummary();
 }
+
 
 // ---- Small async helpers ----
 function delay(ms: number) {
