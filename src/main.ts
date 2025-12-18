@@ -318,6 +318,7 @@ function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
   const picked = pickCellAt(board, canvas!, ev);
   if (!picked) {
     console.warn("[handlePointerDown] No cell picked.");
+    console.log("POINTER DOWN");
     dragStart = null;
     return;
   }
@@ -328,6 +329,7 @@ function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
 // Pointer up: decide if this was a tap or a slide, then act
 async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
   console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+  console.log("POINTER UP");
 
   if (isResolving || gameOver) return;
 
