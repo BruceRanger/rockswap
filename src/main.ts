@@ -178,8 +178,6 @@ function hasAnyValidMove(b: number[][]): boolean {
   const cols = b[0] ? b[0]!.length : 0;
   if (cols === 0) return false;
 
-  // Try swapping each cell with its right and down neighbors.
-  // If any swap creates a match-3 anywhere on the board, return true.
   const dirs: Array<[number, number]> = [
     [0, 1], // right
     [1, 0]  // down
@@ -203,20 +201,19 @@ function hasAnyValidMove(b: number[][]): boolean {
 
         // Make a shallow copy of the board and swap these two cells
         const copy = cloneBoard(b);
-        const temp = copy[r][c];
+        const tmp = copy[r][c];
         copy[r][c] = copy[r2][c2];
-        copy[r2][c2] = temp;
+        copy[r2][c2] = tmp;
 
-        // Now see if this swap produced ANY matches
+        // If that created at least one match anywhere, it's valid
         const matches = findMatches(copy as any);
         if (matches.length > 0) {
-          return true; // there is at least one valid move
+          return true;
         }
       }
     }
   }
 
-  // No swap created a match
   return false;
 }
 
