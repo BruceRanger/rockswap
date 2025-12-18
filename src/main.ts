@@ -89,12 +89,12 @@ const canvas = document.getElementById("board") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
 const hud = document.getElementById("hud") as HTMLDivElement;
 
-// ---- HUD helper ----
 function updateHUD() {
   const stamp = new Date(document.lastModified).toISOString().split("T")[0]; // YYYY-MM-DD
   hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves} | Updated: ${stamp}`;
   hud.title = scoringSummary();
 }
+
 
 
 // ---- Small async helpers ----
