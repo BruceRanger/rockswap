@@ -84,6 +84,11 @@ function scoringSummary(): string {
 return `Scoring: ${per} pts/cell; exact: ${exactText}; long-chain: ${atLeastText}.`;
 }
 
+// ---- DOM setup ----
+const canvas = document.getElementById("board") as HTMLCanvasElement;
+const ctx = canvas.getContext("2d")!;
+const hud = document.getElementById("hud") as HTMLDivElement;
+
 // ---- HUD helper ----
 function updateHUD() {
 hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
