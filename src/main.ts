@@ -79,7 +79,7 @@ function scoringSummary(): string {
       ? atLeastKeys.map((k) => `${k}+ cells: +${atLeast[k]} pts`).join(" | ")
       : "none";
 
-  return "Scoring: " + per + " pts/cell; bonus " + exactText + ".";
+return `Scoring: ${per} pts/cell; exact: ${exactText}; long-chain: ${atLeastText}.`;
 }
 
 // ---- HUD helper ----
