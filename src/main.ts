@@ -217,10 +217,6 @@ function hasAnyValidMove(b: number[][]): boolean {
   return false;
 }
 
-
-  return false;
-}
-
 // ---- Core: swap + resolve helper (used by tap and slide) ----
 async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
   console.log("[input] Attempt swap", { a, b });
