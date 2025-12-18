@@ -36,23 +36,6 @@ let dragStart: { r: number; c: number } | null = null;
 // Base color aliases (from config.ts order)
 const R = 0, G = 1, O = 2, P = 3, B = 4, Y = 5, W = 6;
 
-// Flags
-const S = FLAG_POWER;     // ★
-const D = FLAG_HYPERCUBE; // ◆
-
-function makeTestBoard(): number[][] {
-  return [
-    [R, G, O, P, B, Y, W, R],
-    [G, O, P, B, Y, W, R, G],
-    [O, P, S | G, Y, W, R, G, O],
-    [P, B, Y, W, R, G, O, P],
-    [B, Y, W, R, D | W, O, P, B],
-    [Y, W, R, G, O, P, B, Y],
-    [W, R, G, O, P, B, Y, W],
-    [R, G, O, P, B, Y, W, R],
-  ];
-}
-
 // ================= DEBUG TEST BOARD =================
 function useTestBoardFromURL(): boolean {
   return new URLSearchParams(window.location.search).has("test");
