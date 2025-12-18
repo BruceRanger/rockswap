@@ -102,7 +102,7 @@ const stamp = new Date(document.lastModified).toISOString().slice(0, 16).replace
 // ---- Small async helpers ----
 function delay(ms: number) {
   // Global speed factor affects all cascade pacing
-  return new Promise<void>((resolve) => setTimeout(resolve, Math.round(ms * speed.factor)));
+  return new Promise<void>((resolve) => setTimeout(resolve, Math.round(ms * 1)));
 }
 
 function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Promise<void> {
@@ -110,7 +110,7 @@ function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Pr
     const start = performance.now();
 
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / (durationMs * speed.factor));
+      const t = Math.min(1, (now - start) / (durationMs * 1));
       // Pulsing alpha from 0.4 to 1.0
       const alpha = 0.4 + 0.6 * Math.sin(t * Math.PI * 3);
       renderBoard(ctx, board, { highlight: matches, alpha, gameOver });
@@ -131,7 +131,7 @@ function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
     const start = performance.now();
 
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / (durationMs * speed.factor));
+      const t = Math.min(1, (now - start) / (durationMs * 1));
 
       // Grow then shrink in one cycle: 0 → 1 → 0
       const phase = t < 0.5 ? t * 2 : (1 - t) * 2; // 0..1..0
