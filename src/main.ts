@@ -33,6 +33,11 @@ let lastSwapDest: { r: number; c: number } | null = null;
 let gameOver = false;
 let dragStart: { r: number; c: number } | null = null;
 
+const USE_TEST_BOARD = useTestBoardFromURL();
+
+// Board data
+let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+
 // Base color aliases (from config.ts order)
 const R = 0, G = 1, O = 2, P = 3, B = 4, Y = 5, W = 6;
 
