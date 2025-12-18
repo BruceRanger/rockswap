@@ -285,7 +285,7 @@ async function resolveBoard() {
       await delay(350);
 
       chain++;
-      await delay(120); // between cascade passes
+      await delay(192); // between cascade passes
     }
   } catch (e) {
     console.warn("[resolveBoard] error:", e);
