@@ -1,4 +1,4 @@
-conso1le.log("[RockSwap] main.ts loaded");
+console.log("[RockSwap] main.ts loaded");
 
 // ============================================================
 // File: src/main.ts
