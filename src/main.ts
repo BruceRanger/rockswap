@@ -86,7 +86,7 @@ return `Scoring: ${per} pts/cell; exact: ${exactText}; long-chain: ${atLeastText
 
 // ---- HUD helper ----
 function updateHUD() {
-  hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves} | Speed: ${speed.name} (press S)`;
+hud.textContent = `Score: ${score} | High: ${high} | Moves: ${moves}`;
   hud.title = scoringSummary();
 }
 
