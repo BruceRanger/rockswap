@@ -66,6 +66,9 @@ const USE_TEST_BOARD = useTestBoardFromURL();
 // Board data
 let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
+// After let board = ...
+(window as any).board = board;
+
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
