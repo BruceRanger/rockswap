@@ -66,12 +66,10 @@ const USE_TEST_BOARD = useTestBoardFromURL();
 let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
 (window as any).board = board;
-(window as any).trySwap = trySwap;
-(window as any).findMatches = findMatches;
-(window as any).findMatchesMask = findMatchesMask;
-(window as any).baseColor = baseColor;
-// After let board = ...
-(window as any).board = board;
+//(window as any).trySwap = trySwap;
+//(window as any).findMatches = findMatches;
+//(window as any).findMatchesMask = findMatchesMask;
+//(window as any).baseColor = baseColor;
 
 
 // ---- Scoring summary (display only) ----
