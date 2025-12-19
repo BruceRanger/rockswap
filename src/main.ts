@@ -45,7 +45,7 @@ const D = FLAG_HYPERCUBE; // ◆
 // Fixed test board
 function makeTestBoard(): number[][] {
   return [
-    [R, G, P, O, P, G, P, P],
+    [G, R, P, O, P, G, P, P],
     [R, B, B, Y, R, R, Y, W],
     [R, O, W, B, B, G, P, G],
     [P, G, Y, G, R, W, Y, Y],
