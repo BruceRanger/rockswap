@@ -23,6 +23,12 @@ import {
   FLAG_HYPERCUBE
 } from "./core/cell";
 
+(window as any).board = board;
+(window as any).trySwap = trySwap;
+(window as any).findMatches = findMatches;
+(window as any).findMatchesMask = findMatchesMask;
+(window as any).baseColor = baseColor;
+
 
 let score = 0;
 let moves = 0;
