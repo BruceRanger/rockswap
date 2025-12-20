@@ -24,10 +24,10 @@ import {
 } from "./core/cell";
 
 // @ts-ignore
-(window as any).trySwap = trySwap;
+//(window as any).trySwap = trySwap;
 
 // @ts-ignore
-(window as any).board = board;
+//(window as any).board = board;
 
 let score = 0;
 let moves = 0;
