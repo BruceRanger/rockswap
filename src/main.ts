@@ -23,6 +23,8 @@ import {
   FLAG_HYPERCUBE
 } from "./core/cell";
 
+console.log("RockSwap build marker: main.ts loaded");
+
 // @ts-ignore
 //(window as any).trySwap = trySwap;
 
