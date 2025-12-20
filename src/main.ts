@@ -71,6 +71,12 @@ const USE_TEST_BOARD = useTestBoardFromURL();
 // Board data
 let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
+// Debug: expose to console (safe to leave in)
+ // @ts-ignore
+(window as any).board = board;
+// @ts-ignore
+(window as any).findMatches = findMatches;
+
 // Debug: expose for console
 // @ts-ignore
 (window as any).board = board;
