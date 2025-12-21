@@ -1,4 +1,4 @@
-// ============================================================
+   ffinfw// ============================================================
 // File: src/core/match.ts
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
@@ -54,51 +54,71 @@ function markCol(mask: boolean[][], c: number, start: number, end: number): void
  */
 function findWildcardRunsInLine(line: number[]): Array<{ start: number; end: number }> {
   const runs: Array<{ start: number; end: number }> = [];
-  let i = 0;
+  const n = line.length;
 
-  while (i < line.length) {
-    const v0 = line[i]!;
-    if (v0 < 0) {
-      i++;
-      continue;
+  // Collect all base colors that appear in this line (ignoring wildcards and empties)
+  const colors = new Set<number>();
+  for (let i = 0; i < n; i++) {
+    const v = line[i]!;
+    if (v < 0) continue;           // empty
+    if (!isHypercube(v)) {
+      colors.add(baseColor(v));
     }
+  }
 
-    let start = i;
-
-    // color = -1 means "unknown yet" (only seen wildcards so far)
-    let color = isHypercube(v0) ? -1 : baseColor(v0);
-
-    i++;
-
-    while (i < line.length) {
-      const v = line[i]!;
-      if (v < 0) break;
-
-      if (isHypercube(v)) {
-        // wildcard always continues the run
-        i++;
-        continue;
-      }
-
-      const bc = baseColor(v);
-
-      if (color === -1) {
-        // first real color in this run sets the run's color
-        color = bc;
-        i++;
-        continue;
-      }
-
-      if (bc !== color) break;
-
+  // Special case: line is all wildcards / empties
+  // Then any contiguous non-empty run of length >= 3 counts
+  if (colors.size === 0) {
+    let i = 0;
+    while (i < n) {
+      // skip empties
+      while (i < n && line[i]! < 0) i++;
+      if (i >= n) break;
+      const start = i;
       i++;
+      while (i < n && line[i]! >= 0) i++;
+      const end = i - 1;
+      if (end - start + 1 >= 3) {
+        runs.push({ start, end });
+      }
     }
+    return runs;
+  }
 
-    const end = i - 1;
-    const runLen = end - start + 1;
+  // For each possible color, find "wild-or-that-color" segments
+  for (const color of colors) {
+    let i = 0;
+    while (i < n) {
+      // Skip cells that cannot belong to this color's run
+      while (i < n) {
+        const v = line[i]!;
+        if (v < 0) {          // empty breaks any run
+          i++;
+          continue;
+        }
+        if (isHypercube(v) || baseColor(v) === color) {
+          break;              // good start for this color
+        }
+        i++;
+      }
+      if (i >= n) break;
 
-    if (runLen >= 3) {
-      runs.push({ start, end });
+      // We are at the start of a run for this color
+      const start = i;
+      i++;
+      while (i < n) {
+        const v = line[i]!;
+        if (v < 0) break;     // empty ends the run
+        if (isHypercube(v) || baseColor(v) === color) {
+          i++;                // stays in the run
+        } else {
+          break;              // different color ends the run
+        }
+      }
+      const end = i - 1;
+      if (end - start + 1 >= 3) {
+        runs.push({ start, end });
+      }
     }
   }
 
