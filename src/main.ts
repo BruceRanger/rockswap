@@ -304,7 +304,7 @@ async function resolveBoard() {
       // Optional “special used” pulse (also slowed)
       if (specialUsed) {
         await animatePulse(1.06, 160);
-        await delay(160);
+        await delay(2160);
       }
 
       // scoring
@@ -324,10 +324,10 @@ async function resolveBoard() {
       // 4) REFILL and PAUSE so you can see new rocks appear
       refill(board);
       renderBoard(ctx, board, { gameOver });
-      await delay(350);
+      await delay(2350);
 
       chain++;
-      await delay(400); // between cascade passes
+      await delay(120); // between cascade passes
     }
   } catch (e) {
     console.warn("[resolveBoard] error:", e);
