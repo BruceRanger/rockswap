@@ -304,7 +304,7 @@ async function resolveBoard() {
       // Optional “special used” pulse (also slowed)
       if (specialUsed) {
         await animatePulse(1.06, 160);
-        await delay(2160);
+        await delay(160);
       }
 
       // scoring
@@ -319,7 +319,7 @@ async function resolveBoard() {
       // 3) COLLAPSE and PAUSE so you can see rocks drop
       collapse(board);
       renderBoard(ctx, board, { gameOver });
-      await delay(2350);
+      await delay(350);
 
       // 4) REFILL and PAUSE so you can see new rocks appear
       refill(board);
