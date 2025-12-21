@@ -319,7 +319,7 @@ async function resolveBoard() {
       // 3) COLLAPSE and PAUSE so you can see rocks drop
       collapse(board);
       renderBoard(ctx, board, { gameOver });
-      await delay(2350);
+      await delay(1350);
 
       // 4) REFILL and PAUSE so you can see new rocks appear
       refill(board);
