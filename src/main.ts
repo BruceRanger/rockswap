@@ -71,7 +71,9 @@ function useTestBoardFromURL(): boolean {
 const USE_TEST_BOARD = useTestBoardFromURL();
 
 // Board data
-let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+//let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+
+let board = createBoard();
 
 // Debug: expose to console (safe to leave in)
  // @ts-ignore
