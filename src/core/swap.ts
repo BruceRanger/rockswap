@@ -41,28 +41,20 @@ export function trySwap(
   c2: number
 ): boolean {
 
-//  console.log(`\n=== trySwap(${r1},${c1}) <-> (${r2},${c2}) ===`);
-
   if (!inBounds(board, r1, c1) || !inBounds(board, r2, c2)) {
-//    console.log(" ❌ Reject: out of bounds");
     return false;
   }
   if (!isAdjacent({ r: r1, c: c1 }, { r: r2, c: c2 })) {
-//    console.log(" ❌ Reject: not adjacent");
     return false;
   }
 
   const a = board[r1]?.[c1];
   const b = board[r2]?.[c2];
 
-//  console.log(` Values before swap = A=${a}, B=${b}`);
-
   if (typeof a !== "number" || typeof b !== "number") {
-//    console.log(" ❌ Reject: non-number value");
     return false;
   }
   if (isEmpty(a) || isEmpty(b)) {
-//    console.log(" ❌ Reject: empty gem value");
     return false;
   }
 
@@ -70,25 +62,16 @@ export function trySwap(
   board[r1][c1] = b;
   board[r2][c2] = a;
 
-//  console.log(" Board after tentative swap:");
-///  console.table(board);
-
   const mask = findMatchesMask(board);
   const ok = hasAny(mask);
-
-//  console.log(" Match mask:");
-//  console.table(mask);
-//  console.log(` createdMatch = ${ok}`);
 
   if (!ok) {
     // Undo
     board[r1][c1] = a;
     board[r2][c2] = b;
-//    console.log(" ❌ Swap rejected — no matches. Undoing swap.");
     return false;
   }
 
-//  console.log(" ✅ Swap accepted — at least one match exists.");
   return true;
 }
 
