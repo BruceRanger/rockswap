@@ -32,7 +32,7 @@ function colorFor(board: Board, r: number, c: number): string {
   return typeof raw === "string" ? raw : "#888";
 }
 
-// Invert an rgba()/rgb() color for star / hypercube glyphs.
+// Invert an rgba()/rgb() color for star / diamond glyphs.
 function invertRgba(color: string): string {
   const nums = color.match(/[\d.]+/g);
   if (!nums || nums.length < 3) {
@@ -89,7 +89,7 @@ export function renderBoard(
   }
 
   // ----------------------------
-  // Draw gem colors & borders
+  // Draw rock colors & borders
   // ----------------------------
   for (let r = 0; r < rows; r++) {
     const row = board[r];
@@ -106,7 +106,7 @@ export function renderBoard(
       ctx.strokeRect(x, y, cell, cell);
 
       // ======================================================
-      // SPECIAL GEM OVERLAY (★ Power Gem, ◎ Hypercube)
+      // SPECIAL ROCK OVERLAY (★ Star rock, ◎ diamond rock)
       // ======================================================
       const v = row[c];
       if (typeof v === "number" && v >= 0) {
