@@ -23,14 +23,6 @@ import {
   FLAG_DIAMOND
 } from "./core/cell";
 
-//console.log("RockSwap build marker: main.ts loaded");
-
-// @ts-ignore
-//(window as any).trySwap = trySwap;
-
-// @ts-ignore
-//(window as any).board = board;
-
 let score = 0;
 let moves = 0;
 let firstPick: { r: number; c: number } | null = null;
@@ -75,13 +67,11 @@ const D = FLAG_DIAMOND; // ◆
 
 //let board = createBoard();
 
-// Debug: expose to console (safe to leave in)
  // @ts-ignore
 (window as any).board = board;
 // @ts-ignore
 (window as any).findMatches = findMatches;
 
-// Debug: expose for console
 // @ts-ignore
 (window as any).board = board;
 // @ts-ignore
@@ -254,11 +244,9 @@ function hasAnyValidMove(b: number[][]): boolean {
 
 // ---- Core: swap + resolve helper (used by tap and slide) ----
 async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
-//  console.log("[input] Attempt swap", { a, b });
 
   const swapped = trySwap(board, a.r, a.c, b.r, b.c);
   if (!swapped) {
-//    console.log("[input] Swap rejected (no match).");
     renderBoard(ctx, board, { gameOver });
     return;
   }
@@ -270,7 +258,6 @@ async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: 
   try {
     await resolveBoard();
   } catch (e) {
-//    console.warn("[doSwapAndResolve] resolveBoard failed:", e);
   }
 }
 
@@ -291,10 +278,9 @@ async function resolveBoard() {
       pass++;
 
       const matches = findMatches(board);
-   //   console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
       if (matches.length === 0) break;
 
-      const specialUsed = usedSpecialGem(board, matches);
+      const specialUsed = usedSpecialRock(board, matches);
 
       // 1) show what is about to clear
       await flashMatches(matches, 240);
@@ -335,7 +321,6 @@ async function resolveBoard() {
       await delay(120); // between cascade passes
     }
   } catch (e) {
-//    console.warn("[resolveBoard] error:", e);
   } finally {
     isResolving = false;
 
@@ -354,14 +339,11 @@ async function resolveBoard() {
 
 // Pointer down: remember where the drag started
 function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
-//  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
 
   if (isResolving || gameOver) return;
 
   const picked = pickCellAt(board, canvas!, ev);
   if (!picked) {
-//    console.warn("[handlePointerDown] No cell picked.");
- //   console.log("POINTER DOWN");
     dragStart = null;
     return;
   }
@@ -371,8 +353,6 @@ function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
 
 // Pointer up: decide if this was a tap or a slide, then act
 async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
-//  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
-//  console.log("POINTER UP");
 
   if (isResolving || gameOver) return;
 
@@ -453,8 +433,6 @@ board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
   renderBoard(ctx, board, { gameOver });
   resolveBoard()
-    .then(() => console.log("[restart] resolve complete"))
-    .catch((e) => console.warn("[restart] resolve failed:", e))
     .finally(() => updateHUD());
 });*/
 
