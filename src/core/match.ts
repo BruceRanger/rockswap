@@ -191,3 +191,4 @@ export function combineMatches(a: boolean[][], b: boolean[][]): boolean[][] {
 
   return out;
 }
+
