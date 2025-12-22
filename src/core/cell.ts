@@ -43,3 +43,4 @@ export function isStarRock(value: number): boolean {
 export function isDiamondRock(value: number): boolean {
   return (value & FLAG_DIAMOND) !== 0;
 }
+
