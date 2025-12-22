@@ -461,3 +461,4 @@ board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 // ---- Initial draw ----
 renderBoard(ctx, board, { gameOver });
 updateHUD();
+
