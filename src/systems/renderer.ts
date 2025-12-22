@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { Board } from "../core/grid";
-import { baseColor, isPowerGem, isHypercube } from "../core/cell";
+import { baseColor, isStarRock, isDiamondRock } from "../core/cell";
 import { ROCK_COLORS } from "../config";
 import type { CellRC } from "../core/match";
 
@@ -120,10 +120,10 @@ export function renderBoard(
         ctx.textBaseline = "middle";
         ctx.font = `${Math.floor(cell * 0.6)}px sans-serif`;
 
-        if (isPowerGem(v)) {
+        if (isStarRock(v)) {
   ctx.fillText("★", x + cell / 2, y + cell / 2);
 
-} else if (isHypercube(v)) {
+} else if (isDiamondRock(v)) {
   const base = colorFor(board, r, c);
   const inv = invertRgba(base);
 
