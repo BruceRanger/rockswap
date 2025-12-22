@@ -63,7 +63,7 @@ const D = FLAG_DIAMOND; // ◆
 // Board data
 //let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
-//let board = createBoard();
+let board = createBoard();
 
  // @ts-ignore
 (window as any).board = board;
