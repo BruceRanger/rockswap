@@ -200,7 +200,6 @@ function pickSpecialRock(
       }
 
       if (isMatched(r, c)) {
-   //     if (DEBUG_SPECIALS) console.log("SPECIAL: HYPERCUBE @", { r, c });
         return { r, c, type: "diamond" };
       }
     }
@@ -254,7 +253,6 @@ function pickSpecialRock(
       }
 
       if (isMatched(r, c)) {
-  //      if (DEBUG_SPECIALS) console.log("SPECIAL: POWER @", { r, c });
         return { r, c, type: "star" };
       }
     }
@@ -397,7 +395,7 @@ export function clearAndScore(
 
   const mask = buildBaseMask(board, matches);
 
-  const special = pickSpecialGem(board, mask, preferred);
+  const special = pickSpecialRock(board, mask, preferred);
   applySpecialCreation(board, mask, special);
 
   expandForStarRocks(board, mask);
