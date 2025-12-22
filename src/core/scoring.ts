@@ -149,7 +149,7 @@ function pickSpecialRock(
   // Helper
   const isMatched = (r: number, c: number) => inBounds(board, r, c) && mask[r]![c] === true;
 
-  // If player moved a gem into place, we will prefer that cell
+  // If player moved a rock into place, we will prefer that cell
   // *AS LONG AS it is part of a suitable run*.
 
   // ------------------------------
