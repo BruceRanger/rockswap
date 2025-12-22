@@ -1,7 +1,7 @@
 // ============================================================
 // File: src/systems/renderer.ts
 // Purpose: Draw the RockSwap board, highlights, selection,
-//          special-gem symbols, optional pulse, and Game Over overlay.
+//          special-rock symbols, optional pulse, and Game Over overlay.
 // ============================================================
 
 import type { Board } from "../core/grid";
@@ -17,8 +17,8 @@ function dims(board: Board) {
   return { rows, cols };
 }
 
-// Choose a color for the gem at (r, c).
-// IMPORTANT: use baseColor(...) so flags (Power/Hypercube) don't
+// Choose a color for the rock at (r, c).
+// IMPORTANT: use baseColor(...) so flags (star/diamond) don't
 // shift the color index.
 function colorFor(board: Board, r: number, c: number): string {
   const row = board[r];
