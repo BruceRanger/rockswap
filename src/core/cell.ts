@@ -40,6 +40,6 @@ export function isStarRock(value: number): boolean {
   return (value & FLAG_STAR) !== 0;
 }
 
-export function isDIAMONDROCK(value: number): boolean {
+export function isDiamondRock(value: number): boolean {
   return (value & FLAG_DIAMOND) !== 0;
 }
