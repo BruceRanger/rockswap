@@ -1,4 +1,4 @@
-console.log("[RockSwap] main.ts loaded");
+//console.log("[RockSwap] main.ts loaded");
 
 // ============================================================
 // File: src/main.ts
@@ -15,15 +15,15 @@ import { trySwap } from "./core/swap";
 import { clearAndScore, USER_SCORING } from "./core/scoring";
 import { renderBoard, pickCellAt } from "./systems/renderer";
 import { loadHighScore, maybeUpdateHighScore, clearHighScore } from "./systems/highscore";
-//import { isPowerGem, isHypercube } from "./core/cell";
+//import { isStarRock, isDiamondRock } from "./core/cell";
 import {
-  isPowerGem,
-  isHypercube,
-  FLAG_POWER,
-  FLAG_HYPERCUBE
+  isStarRock,
+  isDiamondRock,
+  FLAG_STAR,
+  FLAG_DIAMOND
 } from "./core/cell";
 
-console.log("RockSwap build marker: main.ts loaded");
+//console.log("RockSwap build marker: main.ts loaded");
 
 // @ts-ignore
 //(window as any).trySwap = trySwap;
@@ -46,11 +46,11 @@ let dragStart: { r: number; c: number } | null = null;
 const R = 0, G = 1, O = 2, P = 3, B = 4, Y = 5, W = 6;
 
 // Flags
-const S = FLAG_POWER;     // ★
-const D = FLAG_HYPERCUBE; // ◆
+const S = FLAG_STAR;     // ★
+const D = FLAG_DIAMOND; // ◆
 
 // Fixed test board
-function makeTestBoard(): number[][] {
+/*function makeTestBoard(): number[][] {
   return [
     [G, R, P, O, P, G, P, P],
     [R, B, B, Y, R, R, Y, W],
@@ -61,19 +61,19 @@ function makeTestBoard(): number[][] {
     [P, W, O, W, B, B, G, R],
     [O, B, B, R, O, B, O, P],
   ];
-}
+}*/
 
-function useTestBoardFromURL(): boolean {
+/*function useTestBoardFromURL(): boolean {
   return new URLSearchParams(window.location.search).has("test");
-}
+}*/
 
 // Decide once per load whether to use the test board
-const USE_TEST_BOARD = useTestBoardFromURL();
+//const USE_TEST_BOARD = useTestBoardFromURL();
 
 // Board data
 //let board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
 
-let board = createBoard();
+//let board = createBoard();
 
 // Debug: expose to console (safe to leave in)
  // @ts-ignore
@@ -134,10 +134,6 @@ function updateHUD() {
   hud.title = scoringSummary();
 }
 
-
-
-
-
 // ---- Small async helpers ----
 function delay(ms: number) {
   // Global speed factor affects all cascade pacing
@@ -164,7 +160,7 @@ function flashMatches(matches: { r: number; c: number }[], durationMs = 220): Pr
   });
 }
 
-// ---- Pulse animation when cashing in a special gem ----
+// ---- Pulse animation when cashing in a special rock ----
 function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
   return new Promise((resolve) => {
     const start = performance.now();
@@ -189,8 +185,8 @@ function animatePulse(maxScale = 1.06, durationMs = 160): Promise<void> {
   });
 }
 
-// ---- Detect if this match "cashes in" any special gem ----
-function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boolean {
+// ---- Detect if this match "cashes in" any special rock ----
+function usedSpecialRock(b: number[][], matches: { r: number; c: number }[]): boolean {
   for (const cell of matches) {
     const r = cell.r;
     const c = cell.c;
@@ -198,7 +194,7 @@ function usedSpecialGem(b: number[][], matches: { r: number; c: number }[]): boo
     if (!row) continue;
     const v = row[c];
     if (typeof v !== "number" || v < 0) continue;
-    if (isPowerGem(v) || isHypercube(v)) {
+    if (isStarRock(v) || isDiamondRock(v)) {
       return true;
     }
   }
@@ -258,11 +254,11 @@ function hasAnyValidMove(b: number[][]): boolean {
 
 // ---- Core: swap + resolve helper (used by tap and slide) ----
 async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: number }) {
-  console.log("[input] Attempt swap", { a, b });
+//  console.log("[input] Attempt swap", { a, b });
 
   const swapped = trySwap(board, a.r, a.c, b.r, b.c);
   if (!swapped) {
-    console.log("[input] Swap rejected (no match).");
+//    console.log("[input] Swap rejected (no match).");
     renderBoard(ctx, board, { gameOver });
     return;
   }
@@ -274,7 +270,7 @@ async function doSwapAndResolve(a: { r: number; c: number }, b: { r: number; c: 
   try {
     await resolveBoard();
   } catch (e) {
-    console.warn("[doSwapAndResolve] resolveBoard failed:", e);
+//    console.warn("[doSwapAndResolve] resolveBoard failed:", e);
   }
 }
 
@@ -295,7 +291,7 @@ async function resolveBoard() {
       pass++;
 
       const matches = findMatches(board);
-      console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
+   //   console.log(`[resolveBoard] pass=${pass} matches=${matches.length}`);
       if (matches.length === 0) break;
 
       const specialUsed = usedSpecialGem(board, matches);
@@ -339,7 +335,7 @@ async function resolveBoard() {
       await delay(120); // between cascade passes
     }
   } catch (e) {
-    console.warn("[resolveBoard] error:", e);
+//    console.warn("[resolveBoard] error:", e);
   } finally {
     isResolving = false;
 
@@ -358,14 +354,14 @@ async function resolveBoard() {
 
 // Pointer down: remember where the drag started
 function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
-  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+//  console.log("pointerdown fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
 
   if (isResolving || gameOver) return;
 
   const picked = pickCellAt(board, canvas!, ev);
   if (!picked) {
-    console.warn("[handlePointerDown] No cell picked.");
-    console.log("POINTER DOWN");
+//    console.warn("[handlePointerDown] No cell picked.");
+ //   console.log("POINTER DOWN");
     dragStart = null;
     return;
   }
@@ -375,8 +371,8 @@ function handlePointerDown(ev: MouseEvent | PointerEvent | TouchEvent) {
 
 // Pointer up: decide if this was a tap or a slide, then act
 async function handlePointerUp(ev: MouseEvent | PointerEvent | TouchEvent) {
-  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
-  console.log("POINTER UP");
+//  console.log("pointerup fired", { isResolving, firstPick, gameOver, type: (ev as any).type });
+//  console.log("POINTER UP");
 
   if (isResolving || gameOver) return;
 
@@ -446,7 +442,7 @@ document.getElementById("clear-data")?.addEventListener("click", () => {
   updateHUD();
 });
 
-document.getElementById("restart-btn")?.addEventListener("click", () => {
+/*document.getElementById("restart-btn")?.addEventListener("click", () => {
 board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
   score = 0;
   moves = 0;
@@ -460,7 +456,7 @@ board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
     .then(() => console.log("[restart] resolve complete"))
     .catch((e) => console.warn("[restart] resolve failed:", e))
     .finally(() => updateHUD());
-});
+});*/
 
 // ---- Initial draw ----
 renderBoard(ctx, board, { gameOver });
