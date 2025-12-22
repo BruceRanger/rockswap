@@ -1,15 +1,15 @@
 // ============================================================
 // File: src/core/cell.ts
-// Purpose: Bit-flags and helpers for special gem types
-//          (power gem, hypercube, etc.).
+// Purpose: Bit-flags and helpers for special rock types
+//          (star rock, diamond rock, etc.).
 // ============================================================
 //
-// Base gem values are 0..(KINDS-1).
-// We encode special gems by adding bit flags above the color index.
+// Base rock values are 0..(KINDS-1).
+// We encode special rocks by adding bit flags above the color index.
 //
 // Example:
-//    value = color | FLAG_POWER
-//    value = color | FLAG_HYPERCUBE
+//    value = color | FLAG_STAR
+//    value = color | FLAG_DIAMOND
 //
 // The renderer can check these flags to draw differently.
 // The board logic can check these flags to apply special effects.
@@ -18,10 +18,10 @@
 
 // --- Flag bits ------------------------------------------------
 
-export const FLAG_POWER = 1 << 8; // 256
-export const FLAG_HYPERCUBE = 1 << 9; // 512
+export const FLAG_STAR = 1 << 8; // 256
+export const FLAG_DIAMOND = 1 << 9; // 512
 
-// Mask for the base gem color (low byte only).
+// Mask for the base rock color (low byte only).
 export const COLOR_MASK = 0xff;
 
 // Return just the underlying base color (0..KINDS-1), hiding flags.
@@ -36,10 +36,10 @@ export function isEmpty(value: number): boolean {
 }
 
 // Convenience helpers for game logic / renderer.
-export function isPowerGem(value: number): boolean {
-  return (value & FLAG_POWER) !== 0;
+export function isStarRock(value: number): boolean {
+  return (value & FLAG_STAR) !== 0;
 }
 
-export function isHypercube(value: number): boolean {
-  return (value & FLAG_HYPERCUBE) !== 0;
+export function isDIAMONDROCK(value: number): boolean {
+  return (value & FLAG_DIAMOND) !== 0;
 }
