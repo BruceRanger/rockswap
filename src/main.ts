@@ -1,5 +1,3 @@
-//console.log("[RockSwap] main.ts loaded");
-
 // ============================================================
 // File: src/main.ts
 // Purpose: Main game loop + UI wiring for RockSwap
@@ -77,13 +75,11 @@ const D = FLAG_DIAMOND; // ◆
 // @ts-ignore
 (window as any).trySwap = trySwap;
 
-
 (window as any).board = board;
 //(window as any).trySwap = trySwap;
 //(window as any).findMatches = findMatches;
 //(window as any).findMatchesMask = findMatchesMask;
 //(window as any).baseColor = baseColor;
-
 
 // ---- Scoring summary (display only) ----
 function scoringSummary(): string {
