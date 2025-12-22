@@ -1,11 +1,10 @@
 // ============================================================
 // File: src/core/scoring.ts
 // Purpose:
-//   - Classic-style Bejeweled 2 scoring & special gems.
 //   - Clear matched cells using mask logic.
-//   - Create Power Gems (4-in-a-row only) and Hypercubes (5-in-a-row).
+//   - Create star rocks (4-in-a-row only) and diamond rocks (5-in-a-row).
 //   - Ensure newly created specials do NOT explode immediately.
-//   - Expand clears for existing Power Gems / Hypercubes.
+//   - Expand clears for existing star rockss and diamond rocks.
 //   - Return base points earned for this pass.
 // ============================================================
 
@@ -13,10 +12,10 @@ import type { Board } from "./grid";
 import type { CellRC } from "./match";
 import {
   baseColor as getBaseColor,
-  isPowerGem,
-  isHypercube,
-  FLAG_POWER,
-  FLAG_HYPERCUBE
+  isStarRock,
+  isDiamondRock,
+  FLAG_STAR,
+  FLAG_DIAMOND
 } from "./cell";
 
 const DEBUG_SPECIALS = true;
@@ -64,7 +63,7 @@ function buildBaseMask(board: Board, matches: CellRC[]): boolean[][] {
 }
 
 // ------------------------------------------------------------
-// Run detection (3/4/5 runs for power & hypercube)
+// Run detection (3/4/5 runs for star rocks & diamond rocks)
 // ------------------------------------------------------------
 
 type Run = {
@@ -132,17 +131,17 @@ function findAllRuns(board: Board): Run[] {
 }
 
 // ------------------------------------------------------------
-// Special-gem selection
-// Uses optional `preferred` cell to override where to place the gem.
+// Special-rock selection
+// Uses optional `preferred` cell to override where to place the rock.
 // ------------------------------------------------------------
 
-type SpecialGem = { r: number; c: number; type: "power" | "hypercube" };
+type SpecialRock = { r: number; c: number; type: "star" | "diamond" };
 
-function pickSpecialGem(
+function pickSpecialRock(
   board: Board,
   mask: boolean[][],
   preferred: CellRC | null
-): SpecialGem | null {
+): SpecialRock | null {
   const runs = findAllRuns(board);
 
   if (runs.length === 0) return null;
@@ -154,7 +153,7 @@ function pickSpecialGem(
   // *AS LONG AS it is part of a suitable run*.
 
   // ------------------------------
-  // 1) Hypercube = 5+ run
+  // 1) Diamond Rock = 5+ run
   // ------------------------------
   for (const run of runs) {
     if (run.len >= 5) {
@@ -201,14 +200,14 @@ function pickSpecialGem(
       }
 
       if (isMatched(r, c)) {
-        if (DEBUG_SPECIALS) console.log("SPECIAL: HYPERCUBE @", { r, c });
-        return { r, c, type: "hypercube" };
+   //     if (DEBUG_SPECIALS) console.log("SPECIAL: HYPERCUBE @", { r, c });
+        return { r, c, type: "diamond" };
       }
     }
   }
 
   // -----------------------------------
-  // 2) Power Gem = 4-in-a-row (ONLY)
+  // 2) Star Rock = 4-in-a-row (ONLY)
   // -----------------------------------
   for (const run of runs) {
     if (run.len === 4) {
@@ -255,8 +254,8 @@ function pickSpecialGem(
       }
 
       if (isMatched(r, c)) {
-        if (DEBUG_SPECIALS) console.log("SPECIAL: POWER @", { r, c });
-        return { r, c, type: "power" };
+  //      if (DEBUG_SPECIALS) console.log("SPECIAL: POWER @", { r, c });
+        return { r, c, type: "star" };
       }
     }
   }
@@ -268,7 +267,7 @@ function pickSpecialGem(
 // Apply special (write it to board)
 // ------------------------------------------------------------
 
-function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialGem | null) {
+function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialRock | null) {
   if (!special) return;
 
   const { r, c, type } = special;
@@ -280,18 +279,18 @@ function applySpecialCreation(board: Board, mask: boolean[][], special: SpecialG
   const color = getBaseColor(v);
   mask[r]![c] = false; // prevent immediate clearing
 
-  board[r]![c] = type === "power" ? color | FLAG_POWER : color | FLAG_HYPERCUBE;
+  board[r]![c] = type === "star" ? color | FLAG_STAR : color | FLAG_DIAMOND;
 }
 
 // ------------------------------------------------------------
-// Power Gem (3x3) and Hypercube expansion
+// Star Rock (3x3) and Diamond Rock expansion
 // ------------------------------------------------------------
 
-function expandForPowerGems(board: Board, mask: boolean[][]) {
+function expandForStarRocks(board: Board, mask: boolean[][]) {
   const { rows, cols } = dims(board);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (mask[r]![c] && isPowerGem(board[r]![c]!)) {
+      if (mask[r]![c] && isStarRock(board[r]![c]!)) {
         for (let dr = -1; dr <= 1; dr++)
           for (let dc = -1; dc <= 1; dc++)
             if (inBounds(board, r + dr, c + dc)) mask[r + dr]![c + dc] = true;
@@ -300,21 +299,21 @@ function expandForPowerGems(board: Board, mask: boolean[][]) {
   }
 }
 
-function expandForHypercubes(board: Board, mask: boolean[][]) {
+function expandForDiamondRocks(board: Board, mask: boolean[][]) {
   const { rows, cols } = dims(board);
   const wipe: number[] = [];
 
-  // Which hypercubes are being cleared?
+  // Which diamond rocks are being cleared?
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++)
-      if (mask[r]![c] && isHypercube(board[r]![c]!)) {
+      if (mask[r]![c] && isDiamondRock(board[r]![c]!)) {
         const color = getBaseColor(board[r]![c]!);
         if (!wipe.includes(color)) wipe.push(color);
       }
 
   if (wipe.length === 0) return;
 
-  // Wipe all gems of those colors
+  // Wipe all rocks of those colors
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
       const v = board[r]![c];
@@ -343,7 +342,7 @@ function applyClearMask(board: Board, mask: boolean[][]): number {
 }
 
 // ------------------------------------------------------------
-// PUBLIC — clear + score + special gem placement
+// PUBLIC — clear + score + special rock placement
 // ------------------------------------------------------------
 
 function expandForDiamondAffectedColors(board: Board, mask: boolean[][]): void {
@@ -361,10 +360,10 @@ function expandForDiamondAffectedColors(board: Board, mask: boolean[][]): void {
       const v = board[r]?.[c];
       if (typeof v !== "number" || v < 0) continue;
 
-      if (isHypercube(v)) {
+      if (isDiamondRock(v)) {
         diamondIncluded = true;
       } else {
-        // Power rocks count as their base color here (that’s what you want)
+        // Star rocks count as their base color here (that’s what you want)
         affected.add(getBaseColor(v));
       }
     }
@@ -401,8 +400,8 @@ export function clearAndScore(
   const special = pickSpecialGem(board, mask, preferred);
   applySpecialCreation(board, mask, special);
 
-  expandForPowerGems(board, mask);
-  expandForHypercubes(board, mask);
+  expandForStarRocks(board, mask);
+  expandForDiamondRocks(board, mask);
 
   const cleared = applyClearMask(board, mask);
   return cleared * USER_SCORING.perCell;
