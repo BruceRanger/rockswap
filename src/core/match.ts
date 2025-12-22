@@ -1,19 +1,19 @@
-   // ============================================================
+ƒ   // ============================================================
 // File: src/core/match.ts
 // Purpose: Find horizontal/vertical matches on the board
 // ------------------------------------------------------------
 // - A match is any run length >= 3 of the same base color,
 //   but:
-//     * Power gems (★) match as their base color (flags ignored)
-//     * Hypercube/Diamond (◆) is a TRUE wildcard:
-//         - It matches ANY color in a run
-//         - If a run starts with wildcards, it "adopts" the first
+//     * Star rocks (★) match as their base color (flags ignored)
+//     * Diamond rocks (◆) are TRUE wildcards:
+//         - They match ANY color in a run
+//         - If a run starts with a wildcard, it "adopts" the first
 //           real color it encounters
 // - Strict-mode safe.
 // ============================================================
 
 import type { Board } from "./grid";
-import { baseColor, isHypercube } from "./cell";
+import { baseColor, isDiamondRock } from "./cell";
 
 export type CellRC = { r: number; c: number };
 
@@ -61,7 +61,7 @@ function findWildcardRunsInLine(line: number[]): Array<{ start: number; end: num
   for (let i = 0; i < n; i++) {
     const v = line[i]!;
     if (v < 0) continue;           // empty
-    if (!isHypercube(v)) {
+    if (!isDiamondRock(v)) {
       colors.add(baseColor(v));
     }
   }
@@ -96,7 +96,7 @@ function findWildcardRunsInLine(line: number[]): Array<{ start: number; end: num
           i++;
           continue;
         }
-        if (isHypercube(v) || baseColor(v) === color) {
+        if (isDiamondRock(v) || baseColor(v) === color) {
           break;              // good start for this color
         }
         i++;
@@ -109,7 +109,7 @@ function findWildcardRunsInLine(line: number[]): Array<{ start: number; end: num
       while (i < n) {
         const v = line[i]!;
         if (v < 0) break;     // empty ends the run
-        if (isHypercube(v) || baseColor(v) === color) {
+        if (isDiamondRock(v) || baseColor(v) === color) {
           i++;                // stays in the run
         } else {
           break;              // different color ends the run
