@@ -418,7 +418,7 @@ document.getElementById("clear-data")?.addEventListener("click", () => {
   updateHUD();
 });
 
-/*document.getElementById("restart-btn")?.addEventListener("click", () => {
+document.getElementById("restart-btn")?.addEventListener("click", () => {
 board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
   score = 0;
   moves = 0;
@@ -430,7 +430,7 @@ board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
   renderBoard(ctx, board, { gameOver });
   resolveBoard()
     .finally(() => updateHUD());
-});*/
+});
 
 // ---- Initial draw ----
 renderBoard(ctx, board, { gameOver });
