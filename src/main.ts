@@ -419,18 +419,22 @@ document.getElementById("clear-data")?.addEventListener("click", () => {
 });
 
 document.getElementById("restart-btn")?.addEventListener("click", () => {
-board = USE_TEST_BOARD ? makeTestBoard() : createBoard();
+  board = createBoard();
   score = 0;
   moves = 0;
   firstPick = null;
   lastSwapDest = null;
   gameOver = false;
   dragStart = null;
+  isResolving = false;
 
   renderBoard(ctx, board, { gameOver });
-  resolveBoard()
-    .finally(() => updateHUD());
+  updateHUD();
+
+  // optional: clear any immediate matches
+  resolveBoard().finally(updateHUD);
 });
+
 
 // ---- Initial draw ----
 renderBoard(ctx, board, { gameOver });
