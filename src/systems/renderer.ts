@@ -189,32 +189,44 @@ export function renderBoard(
   }
 
   // ----------------------------
-  // Game Over overlay (if requested)
-  // ----------------------------
-  if (opts && opts.gameOver) {
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, W, H);
+// Game Over overlay (board-centered)
+// ----------------------------
+if (opts && opts.gameOver) {
+  ctx.save();
 
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+  const boardW = cols * cell;
+  const boardH = rows * cell;
+  const cx = ox + boardW / 2;
+  const cy = oy + boardH / 2;
 
-   const titleSize = Math.floor(cell * 0.9);
-const msgSize = Math.floor(cell * 0.45);
+  // Dim only the board area
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillRect(ox, oy, boardW, boardH);
 
+  ctx.fillStyle = "white";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-    ctx.font = `${titleSize}px sans-serif`;
-    ctx.fillText("NO MOVES – GAME OVER", W / 2, H / 2 - titleSize * 0.3);
+  const titleSize = Math.floor(cell * 0.75);
+  const msgSize   = Math.floor(cell * 0.4);
 
-    ctx.font = `${msgSize}px sans-serif`;
-    ctx.fillText("Tap New Game to play again", W / 2, H / 2 + msgSize * 0.9);
+  ctx.font = `bold ${titleSize}px sans-serif`;
+  ctx.fillText(
+    "NO MOVES – GAME OVER",
+    cx,
+    cy - cell * 0.45
+  );
 
-    ctx.restore();
-  }
+  ctx.font = `${msgSize}px sans-serif`;
+  ctx.fillText(
+    "Tap New Game to play again",
+    cx,
+    cy + cell * 0.45
+  );
 
-  ctx.restore(); // undo pulse transform
+  ctx.restore();
 }
+
 
 // ----------------------------
 // Convert pointer → board cell
