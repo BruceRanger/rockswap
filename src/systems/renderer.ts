@@ -207,6 +207,23 @@ if (opts && opts.gameOver) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
+//  const titleSize = Math.floor(cell * 0.75);
+  const msgSize   = Math.floor(cell * 0.4);
+
+ /* ctx.font = `bold ${titleSize}px sans-serif`;
+  ctx.fillText(
+  "Tap New Game to play again",
+  cx,
+  cy + cell * 0.45,
+  boardW * 0.9
+);*/
+
+
+  ctx.font = `${msgSize}px sans-serif`;
+ctx.fillStyle = "white";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
   const titleSize = Math.floor(cell * 0.75);
   const msgSize   = Math.floor(cell * 0.4);
 
@@ -225,6 +242,14 @@ if (opts && opts.gameOver) {
     cx,
     cy + cell * 0.45
   );
+
+   ctx.restore();
+}
+
+  ctx.restore(); // undo pulse transform
+}
+
+
 
    ctx.restore();
 }
