@@ -224,8 +224,12 @@ if (opts && opts.gameOver) {
     cy + cell * 0.45
   );
 
-  ctx.restore();
+   ctx.restore();
 }
+
+  ctx.restore(); // undo pulse transform
+}
+
 
 
 // ----------------------------
