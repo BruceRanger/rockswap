@@ -212,10 +212,12 @@ if (opts && opts.gameOver) {
 
   ctx.font = `bold ${titleSize}px sans-serif`;
   ctx.fillText(
-    "NO MOVES – GAME OVER",
-    cx,
-    cy - cell * 0.45
-  );
+  "Tap New Game to play again",
+  cx,
+  cy + cell * 0.45,
+  boardW * 0.9
+);
+
 
   ctx.font = `${msgSize}px sans-serif`;
   ctx.fillText(
