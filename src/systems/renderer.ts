@@ -188,7 +188,7 @@ export function renderBoard(
     }
   }
 
-  // ----------------------------
+// ----------------------------
 // Game Over overlay (board-centered)
 // ----------------------------
 if (opts && opts.gameOver) {
@@ -207,54 +207,17 @@ if (opts && opts.gameOver) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-//  const titleSize = Math.floor(cell * 0.75);
-  const msgSize   = Math.floor(cell * 0.4);
+  // Both lines same (smaller) size
+  const textSize = Math.floor(cell * 0.4);
+  ctx.font = `${textSize}px sans-serif`;
 
- /* ctx.font = `bold ${titleSize}px sans-serif`;
-  ctx.fillText(
-  "Tap New Game to play again",
-  cx,
-  cy + cell * 0.45,
-  boardW * 0.9
-);*/
+  ctx.fillText("NO MOVES – GAME OVER", cx, cy - cell * 0.45);
+  ctx.fillText("Tap New Game to play again", cx, cy + cell * 0.45);
 
-
-  ctx.font = `${msgSize}px sans-serif`;
-ctx.fillStyle = "white";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const titleSize = Math.floor(cell * 0.75);
-  const msgSize   = Math.floor(cell * 0.4);
-
- /* ctx.font = `bold ${titleSize}px sans-serif`;
-  ctx.fillText(
-  "Tap New Game to play again",
-  cx,
-  cy + cell * 0.45,
-  boardW * 0.9
-);*/
-
-
-  ctx.font = `${msgSize}px sans-serif`;
-  ctx.fillText(
-    "Tap New Game to play again",
-    cx,
-    cy + cell * 0.45
-  );
-
-   ctx.restore();
+  ctx.restore();
 }
 
-  ctx.restore(); // undo pulse transform
-}
-
-
-
-   ctx.restore();
-}
-
-  ctx.restore(); // undo pulse transform
+ctx.restore(); // undo pulse transform
 }
 
 
