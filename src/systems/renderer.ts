@@ -200,8 +200,9 @@ export function renderBoard(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    const titleSize = Math.floor(Math.min(W, H) * 0.12);
-    const msgSize = Math.floor(Math.min(W, H) * 0.06);
+   const titleSize = Math.floor(cell * 0.9);
+const msgSize = Math.floor(cell * 0.45);
+
 
     ctx.font = `${titleSize}px sans-serif`;
     ctx.fillText("NO MOVES – GAME OVER", W / 2, H / 2 - titleSize * 0.3);
